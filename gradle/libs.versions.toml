@@ -1,0 +1,20 @@
+[versions]
+vertx = "4.5.11"
+postgresql = "4.5.11"
+
+[libraries]
+
+### VERTX
+vertx-core = { group = "io.vertx", name = "vertx-core", version.ref = "vertx" }
+vertx-kotlin = { group = "io.vertx", name = "vertx-lang-kotlin", version.ref = "vertx" }
+vertx-kotlin-coroutines = { group = "io.vertx", name = "vertx-lang-kotlin-coroutines", version.ref = "vertx" }
+vertx-web = { group = "io.vertx", name = "vertx-web", version.ref = "vertx" }
+vertx-config = { group = "io.vertx", name = "vertx-config", version.ref = "vertx" }
+
+### DATABASES
+pg-client = { group = "io.vertx", name = "vertx-pg-client", version.ref = "postgresql" }
+
+[plugins]
+
+[bundles]
+
