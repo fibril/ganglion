@@ -1,8 +1,7 @@
-
 plugins {
     kotlin("jvm") version "1.9.0"
     application
-    id("com.github.johnrengelman.shadow") version "7.1.2"
+    alias(libs.plugins.shadow)
     id("ganglion.default")
 }
 
@@ -20,14 +19,14 @@ application {
 dependencies {
     implementation(libs.vertx.core)
     implementation(libs.vertx.kotlin.coroutines)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.vertx.config)
+    implementation(project(":ganglion-storage"))
     testImplementation(kotlin("test"))
 }
 
 tasks.test {
     useJUnitPlatform()
-}
-kotlin {
-    jvmToolchain(17)
 }
 
 tasks.withType<JavaExec> {

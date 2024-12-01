@@ -7,6 +7,7 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation(libs.vertx.config)
+
+kotlin {
+    jvmToolchain(17)
 }

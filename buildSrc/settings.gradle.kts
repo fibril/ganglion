@@ -1,3 +1,4 @@
+// necessary in order to use version catalog in buildSrc
 dependencyResolutionManagement {
     versionCatalogs {
         create("libs") {

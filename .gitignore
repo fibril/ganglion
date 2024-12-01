@@ -40,3 +40,6 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+ganglion-storage/src/main/resources/database.properties
+app/src/main/resources/application.properties
