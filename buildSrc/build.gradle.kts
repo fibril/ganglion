@@ -11,3 +11,12 @@ repositories {
 kotlin {
     jvmToolchain(17)
 }
+
+gradlePlugin {
+    plugins {
+        create("generate-migration-plugin") {
+            id = "io.fibril.ganglion.storage.migration.generate-migration-plugin"
+            implementationClass = "GenerateMigrationPlugin"
+        }
+    }
+}

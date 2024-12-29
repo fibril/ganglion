@@ -3,6 +3,7 @@ plugins {
     application
     alias(libs.plugins.shadow)
     id("ganglion.default")
+    id("io.fibril.ganglion.storage.migration.generate-migration-plugin")
 }
 
 repositories {
@@ -35,4 +36,8 @@ tasks.withType<JavaExec> {
         mainVerticleName,
         "--launcher-class=$launcherClassName"
     )
+}
+
+tasks.named("generateMigration").configure {
+    dependsOn("processResources")
 }

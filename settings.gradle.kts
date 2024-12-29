@@ -19,3 +19,5 @@ dependencyResolutionManagement {
 
 include("ganglion-storage")
 include("app")
+include("ganglion-storage:src:main:java")
+findProject(":ganglion-storage:src:main:java")?.name = "java"
