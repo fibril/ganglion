@@ -1,44 +1,59 @@
 import org.gradle.api.DefaultTask
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.provider.Property
-import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.OutputStreamWriter
+import java.nio.charset.StandardCharsets
 import java.util.*
 
 
 abstract class CreateMigrationFile : DefaultTask() {
-    @get:Input
-    abstract val migrationText: Property<String>
+    companion object {
+        const val migrationNameProperty = "migrationName"
+        const val tableNameProperty = "tableName"
+    }
 
     private fun generateMigrationFile(): String {
-        if (!project.hasProperty("migrationClass")) {
+        if (!project.hasProperty(migrationNameProperty)) {
             throw IllegalArgumentException("No migrationClass prop specified")
         }
+
         val timestamp = Date().time
         val filepath =
             project.projectDir.toString() + String.format(
-                "/src/main/resources/migrations/%s_%s.java",
+                "/src/main/resources/db/migrations/%s_%s.sql",
                 timestamp,
-                project.property("migrationClass")
+                project.property(migrationNameProperty)
             )
-        migrationText.set(
-            StatementGenerator.createStatement(
-                project.property("migrationClass") as String
-            )
-        )
+
         return filepath
     }
 
     @OutputFile
-    val migrationFile: File = File(if (project.hasProperty("migrationClass")) generateMigrationFile() else "")
+    val migrationFile: File = File(if (project.hasProperty(migrationNameProperty)) generateMigrationFile() else "")
 
     @TaskAction
     fun action() {
-        migrationFile.createNewFile()
-        migrationFile.writeText(migrationText.get())
+        try {
+            val created = migrationFile.createNewFile()
+
+            if (created && project.hasProperty(migrationNameProperty)) {
+                OutputStreamWriter(FileOutputStream(migrationFile), StandardCharsets.UTF_8).use { writer ->
+                    writer.write(
+                        StatementGenerator.initStatement(
+                            if (project.hasProperty(tableNameProperty)) project.property(tableNameProperty)
+                                ?.toString() else null
+                        )
+                    )
+                }
+            }
+        } catch (e: IOException) {
+            //
+        }
     }
 }
 
@@ -46,23 +61,21 @@ class GenerateMigrationPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         project.tasks.register("generateMigration", CreateMigrationFile::class.java) {
             group = "migration"
-            description = "Create Migration file in resources/migration directory"
+            description = "Create Migration file in resources/db/migration directory"
         }
     }
 }
 
 
-class StatementGenerator {
-    companion object {
-        fun createStatement(migrationClass: String): String {
+object StatementGenerator {
+    fun initStatement(tableName: String?): String {
+        if (tableName != null) {
             return """
-                class $migrationClass {
-                  TableCommand change() {
-                    // add changes here
-                    
-                  }
-                }
+                CREATE TABLE IF NOT EXISTS $tableName (
+                    id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4()
+                );
             """.trimIndent()
         }
+        return ""
     }
 }

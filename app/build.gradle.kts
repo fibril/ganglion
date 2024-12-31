@@ -22,7 +22,7 @@ dependencies {
     implementation(libs.vertx.kotlin.coroutines)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.vertx.config)
-    implementation(project(":ganglion-storage"))
+    implementation(project(":storage"))
     testImplementation(kotlin("test"))
 }
 

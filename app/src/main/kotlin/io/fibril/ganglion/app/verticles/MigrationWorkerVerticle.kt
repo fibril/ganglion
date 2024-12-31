@@ -1,24 +1,30 @@
 package io.fibril.ganglion.app.verticles
 
 import io.fibril.ganglion.storage.impl.PGDatabase
-import io.vertx.core.AbstractVerticle
+import io.fibril.ganglion.storage.migration.Migrator
 import io.vertx.core.DeploymentOptions
-import io.vertx.core.Promise
 import io.vertx.core.ThreadingModel
+import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
 import kotlinx.coroutines.runBlocking
 
-class MigrationWorkerVerticle : AbstractVerticle() {
-    override fun start(promise: Promise<Void>) {
-        val pgDatabase = PGDatabase()
+class MigrationWorkerVerticle : CoroutineVerticle() {
+    override suspend fun start() {
+        val pgDatabaseClient = PGDatabase().client(vertx)
         runBlocking {
-            pgDatabase.migrate { result ->
+            pgDatabaseClient.query(Migrator.buildMigrationSQL()).execute().onComplete { ar ->
+
                 run {
-                    if (result.isSuccess) {
-                        promise.complete()
+                    if (ar.succeeded()) {
+                        val result: RowSet<Row> = ar.result()
+                        println("Got " + result.size() + " rows ")
                     } else {
-                        promise.fail(result.exceptionOrNull())
+                        println("Failure: " + ar.cause().message)
                     }
+
                 }
+
             }
         }
     }

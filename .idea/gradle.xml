@@ -22,9 +22,7 @@
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/buildSrc" />
             <option value="$PROJECT_DIR$/ganglion-storage" />
-            <option value="$PROJECT_DIR$/ganglion-storage/src" />
-            <option value="$PROJECT_DIR$/ganglion-storage/src/main" />
-            <option value="$PROJECT_DIR$/ganglion-storage/src/main/java" />
+            <option value="$PROJECT_DIR$/storage" />
           </set>
         </option>
       </GradleProjectSettings>
