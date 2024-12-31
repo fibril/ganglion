@@ -1,7 +1,6 @@
 [versions]
 vertx = "4.5.11"
 kotlinxCoroutines = "1.9.0"
-flyway = "11.0.0"
 shadow = "8.3.5"
 
 [libraries]
@@ -15,16 +14,12 @@ vertx-config = { group = "io.vertx", name = "vertx-config", version.ref = "vertx
 
 ### DATABASES
 pg-client = { group = "io.vertx", name = "vertx-pg-client", version.ref = "vertx" }
-mysql-client = { group = "io.vertx", name = "vertx-mysql-client", version.ref = "vertx" }
-flyway-core = { group = "org.flywaydb", name = "flyway-core", version.ref = "flyway" }
-flyway-pg = { group = "org.flywaydb", name = "flyway-database-postgresql", version.ref = "flyway" }
 
 ### KOTLINX-COROUTINES
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 
 
 [plugins]
-flyway = { id = "org.flywaydb.flyway", version.ref = "flyway" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 
 
