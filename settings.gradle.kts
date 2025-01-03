@@ -20,3 +20,4 @@ dependencyResolutionManagement {
 include("ganglion-storage")
 include("app")
 include("storage")
+include("client")
