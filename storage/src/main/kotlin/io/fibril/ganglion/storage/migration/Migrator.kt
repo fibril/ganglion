@@ -44,6 +44,20 @@ class Migrator {
 
         val initSQL = """
             CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+            
+            -- Add your Trigger functions manually here. TODO:- Make adding trigger function in migration files possible --
+            
+            CREATE OR REPLACE FUNCTION update_updated_at_column()
+            RETURNS TRIGGER AS ${'$'}${'$'}
+            BEGIN
+               NEW.updated_at = now();
+               RETURN NEW;
+            END;
+            ${'$'}${'$'} language 'plpgsql';
+            
+            -- end of trigger functions--
+            
+            
             DO
             ${"$"}body$
             BEGIN

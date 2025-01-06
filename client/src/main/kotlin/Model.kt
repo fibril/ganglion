@@ -1,11 +1,7 @@
 import io.vertx.core.json.JsonObject
-import java.util.*
 
-abstract class Model : DTO() {
+interface Model {
 
-    abstract fun asJson(): JsonObject
+    fun asJson(permittedFields: List<String>?): JsonObject
 
-    companion object {
-        val matrixFields = ResourceBundle.getBundle("matrixFields")
-    }
 }

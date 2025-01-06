@@ -13,6 +13,6 @@ class UserTests {
         val user1 = User("userId")
         assertTrue { user1.validate() }
 
-        assertFalse { DTO.validate(JsonObject().put("fake_key", "fake_value"), user1.schema) }
+        assertFalse { DTO.validate(JsonObject().put("fakeKey", "fakeValue"), user1.schema) }
     }
 }

@@ -1,16 +1,17 @@
 import io.vertx.core.json.JsonObject
 import io.vertx.json.schema.*
 
-abstract class DTO {
+
+interface DTO {
 
     /**
      * Define a custom schema to validate the supplied JSON
      */
-    abstract val schema: JsonSchema
+    val schema: JsonSchema
 
-    abstract fun validate(): Boolean
+    fun validate(): Boolean
 
-    companion object {
+    object Helpers {
         fun validate(json: JsonObject, schema: JsonSchema): Boolean {
             return try {
                 val validator =
@@ -25,6 +26,14 @@ abstract class DTO {
             } catch (e: SchemaException) {
                 println(e)
                 false
+            }
+        }
+
+        fun useDTOValidation(dto: DTO, onValidationFailure: () -> Unit, block: () -> Unit) {
+            if (dto.validate()) {
+                block()
+            } else {
+                onValidationFailure()
             }
         }
     }

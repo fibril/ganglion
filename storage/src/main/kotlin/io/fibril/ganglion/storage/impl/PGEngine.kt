@@ -2,13 +2,14 @@ package io.fibril.ganglion.storage.impl
 
 import StorageConstants
 import io.fibril.ganglion.storage.DatabaseEngine
+import io.vertx.core.Vertx
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.sqlclient.PoolOptions
 
-class PGEngine : DatabaseEngine() {
+class PGEngine(private val vertx: Vertx) : DatabaseEngine() {
 
     override suspend fun connectOptions(): PgConnectOptions {
-        val config = StorageConstants.config.await()
+        val config = StorageConstants.config(vertx).await()
         val dbConfig = config.getJsonObject("ganglion").getJsonObject("db")
         val credentialsObj = dbConfig.getJsonObject("credentials")
         return PgConnectOptions()
@@ -20,7 +21,7 @@ class PGEngine : DatabaseEngine() {
     }
 
     override suspend fun poolOptions(): PoolOptions {
-        val config = StorageConstants.config.await()
+        val config = StorageConstants.config(vertx).await()
         val dbConfig = config.getJsonObject("ganglion").getJsonObject("db")
         val poolObject = dbConfig.getJsonObject("pool")
         val poolOptions = PoolOptions()

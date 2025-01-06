@@ -72,8 +72,17 @@ object StatementGenerator {
         if (tableName != null) {
             return """
                 CREATE TABLE IF NOT EXISTS $tableName (
-                    id UUID PRIMARY KEY NOT NULL DEFAULT uuid_generate_v4()
+                    id varchar PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
+                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+                    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
                 );
+                
+                CREATE TRIGGER update_${tableName}_updated_at
+                    BEFORE UPDATE
+                    ON
+                        $tableName
+                    FOR EACH ROW
+                EXECUTE PROCEDURE update_updated_at_column();
             """.trimIndent()
         }
         return ""

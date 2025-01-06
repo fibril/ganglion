@@ -1,41 +1,31 @@
 package v1.users.models
 
-import DTO
 import Model
+import com.google.inject.Inject
 import io.vertx.core.json.JsonObject
-import io.vertx.json.schema.JsonSchema
-import io.vertx.json.schema.common.dsl.Schemas
 
-data class User(
-    val userId: String,
-    private val profile: UserProfile? = null
-) : Model() {
+interface UserModel : Model {
 
-    override fun asJson(): JsonObject =
-        JsonObject().put(USER_ID_KEY, userId).mergeIn(profile?.asJson() ?: JsonObject())
+}
 
+data class User @Inject constructor(
+    val userId: MatrixUserId,
+    val otherJsonObject: JsonObject? = null
+) : UserModel {
 
-    override val schema: JsonSchema
-        get() = JsonSchema.of(
-            Schemas.objectSchema()
-                .requiredProperty(USER_ID_KEY, Schemas.stringSchema())
-                .toJson()
-        )
-
-    override fun validate(): Boolean {
-        return DTO.validate(asJson(), schema)
-    }
+    override fun asJson(permittedFields: List<String>?): JsonObject =
+        JsonObject().put(ID_FIELD_KEY, userId.toString()).mergeIn(otherJsonObject ?: JsonObject())
 
     companion object {
-
-        val USER_ID_KEY = matrixFields.getString("user.id")
+        private const val ID_FIELD_KEY = "id"
 
         fun fromJson(jsonObject: JsonObject): User {
-            val hasProfileFields = jsonObject.size() > 1 && jsonObject.containsKey(USER_ID_KEY)
-
             return User(
-                jsonObject.getString(USER_ID_KEY),
-                if (hasProfileFields) UserProfile.fromJson(jsonObject) else null
+                MatrixUserId(jsonObject.getString(ID_FIELD_KEY)),
+                jsonObject.copy().apply {
+                    this.remove(ID_FIELD_KEY)
+                    // remove other unwanted values
+                }
             )
         }
 

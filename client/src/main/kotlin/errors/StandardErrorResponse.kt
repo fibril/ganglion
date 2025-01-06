@@ -1,19 +1,35 @@
 package errors
 
 import io.vertx.core.json.JsonObject
+import utils.SupportedLanguages
+import java.util.*
 
 data class StandardErrorResponse(
-    val errCode: String,
-    val error: String,
-    val additionalKeyValues: Map<String, String> = mapOf()
+    val errCode: ErrorCodes,
+    val error: String? = null,
+    val additionalKeyValues: JsonObject = JsonObject()
 ) {
-    fun asJSON(): JsonObject =
+    internal constructor(errCode: ErrorCodes, forLanguages: SupportedLanguages, additionalKeyValues: JsonObject) : this(
+        errCode,
+        ResourceBundle.getBundle("${forLanguages.name.lowercase()}.errors").getString(errCode.name),
+        additionalKeyValues
+    )
+
+    internal constructor(errCode: ErrorCodes, additionalKeyValues: JsonObject) : this(
+        errCode,
+        SupportedLanguages.EN,
+        additionalKeyValues
+    )
+
+    internal constructor(errCode: ErrorCodes) : this(errCode, SupportedLanguages.EN, JsonObject())
+
+
+    fun asJson(): JsonObject =
         JsonObject()
-            .put("errCode", errCode).put("errcode", errCode).put("error", error).also { jsonObject ->
-                run {
-                    for (entry in additionalKeyValues) {
-                        jsonObject.put(entry.key, entry.value)
-                    }
-                }
-            }
+            .put("errCode", errCode)
+            .put("errcode", errCode)
+            .put("error", error)
+            .mergeIn(additionalKeyValues)
+
+    override fun toString() = asJson().toString()
 }

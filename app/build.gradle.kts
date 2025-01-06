@@ -12,6 +12,8 @@ repositories {
 
 val mainVerticleName = "io.fibril.ganglion.app.MainVerticle"
 val launcherClassName = "io.vertx.core.Launcher"
+val watchForChange = "src/**/*"
+val doOnChange = "${projectDir}/gradlew classes"
 
 application {
     mainClass.set(launcherClassName)
@@ -19,10 +21,13 @@ application {
 
 dependencies {
     implementation(libs.vertx.core)
+    implementation(libs.vertx.config)
+    implementation(libs.vertx.web)
     implementation(libs.vertx.kotlin.coroutines)
     implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.vertx.config)
+    implementation(libs.guice)
     implementation(project(":storage"))
+    implementation(project(":client"))
     testImplementation(kotlin("test"))
 }
 
@@ -34,7 +39,9 @@ tasks.withType<JavaExec> {
     args = listOf(
         "run",
         mainVerticleName,
-        "--launcher-class=$launcherClassName"
+        "--redeploy=$watchForChange",
+        "--launcher-class=$launcherClassName",
+        "--on-redeploy=$doOnChange"
     )
 }
 

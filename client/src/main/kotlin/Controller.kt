@@ -4,5 +4,8 @@ import io.vertx.ext.web.Router
 internal abstract class Controller(vertx: Vertx) {
     internal val router: Router = Router.router(vertx)
 
-    abstract fun mountRoutes(): Router
+    /**
+     * Mount the routes specific to this Controller
+     */
+    abstract fun mountSubRoutes(): Router
 }

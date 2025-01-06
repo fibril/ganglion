@@ -7,12 +7,15 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.future.asDeferred
 
 object StorageConstants {
-    val config: Deferred<JsonObject>
+    val configRetrieverOptions: ConfigRetrieverOptions
         get() {
             val hierarchicalConfig = ConfigStoreOptions().setFormat("properties").setType("file")
                 .setConfig(JsonObject().put("path", "database.properties").put("hierarchical", true))
-            val options = ConfigRetrieverOptions().addStore(hierarchicalConfig)
-            val configRetriever = ConfigRetriever.create(Vertx.vertx(), options)
-            return configRetriever.config.toCompletionStage().asDeferred()
+            return ConfigRetrieverOptions().addStore(hierarchicalConfig)
         }
+
+    fun config(vertx: Vertx): Deferred<JsonObject> {
+        val configRetriever = ConfigRetriever.create(vertx, configRetrieverOptions)
+        return configRetriever.config.toCompletionStage().asDeferred()
+    }
 }
