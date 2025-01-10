@@ -17,7 +17,7 @@ dependencyResolutionManagement {
     }
 }
 
-include("ganglion-storage")
 include("app")
-include("storage")
+include("auth")
 include("client")
+include("storage")

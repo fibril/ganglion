@@ -20,9 +20,9 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
+            <option value="$PROJECT_DIR$/auth" />
             <option value="$PROJECT_DIR$/buildSrc" />
             <option value="$PROJECT_DIR$/client" />
-            <option value="$PROJECT_DIR$/ganglion-storage" />
             <option value="$PROJECT_DIR$/storage" />
           </set>
         </option>

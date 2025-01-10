@@ -41,5 +41,6 @@ bin/
 ### Mac OS ###
 .DS_Store
 
-storage/src/main/resources/database.properties
+app/src/main/resources/database.properties
 app/src/main/resources/application.properties
+app/src/main/resources/secrets.properties

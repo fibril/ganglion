@@ -4,12 +4,10 @@ import Service
 import com.google.inject.Inject
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
-import v1.users.controllers.UserController
-import v1.users.controllers.UserProfileController
-import v1.users.services.UserProfileService
-import v1.users.services.UserProfileServiceImpl
-import v1.users.services.UserService
-import v1.users.services.UserServiceImpl
+import v1.media.MediaController
+import v1.media.MediaService
+import v1.media.MediaServiceImpl
+import v1.users.*
 
 
 class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Map<String, Service<*>>) {
@@ -26,14 +24,20 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
             UserProfileController(vertx, servicesMap[UserProfileServiceImpl.IDENTIFIER] as UserProfileService)
                 .mountSubRoutes()
 
+        val mediaController = MediaController(vertx, servicesMap[MediaServiceImpl.IDENTIFIER] as MediaService)
+        val mediaRouter = mediaController.mountSubRoutes()
+        val mediaCreationAndUploadRouter = mediaController.mountMediaCreateAndUploadRoutes()
+
         router.route(PATH_PREFIX).subRouter(usersRouter)
         router.route(PATH_PREFIX).subRouter(userProfileRouter)
+        router.route(PATH_PREFIX).subRouter(mediaRouter)
+        // no path prefix
+        router.route().subRouter(mediaCreationAndUploadRouter)
 
     }
 
     companion object {
-        const val VERSION = "v1"
-        const val MATRIX_CLIENT_SERVER_PATH_PREFIX = "_matrix/client/v3"
-        const val PATH_PREFIX = "/$VERSION/${MATRIX_CLIENT_SERVER_PATH_PREFIX}*"
+        const val MATRIX_CLIENT_SERVER_PATH_PREFIX = "_matrix/client"
+        const val PATH_PREFIX = "/${MATRIX_CLIENT_SERVER_PATH_PREFIX}*"
     }
 }

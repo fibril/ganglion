@@ -1,5 +1,6 @@
-package v1.users.repositories
+package v1.users
 
+import DTO
 import Repository
 import com.google.inject.Inject
 import io.fibril.ganglion.storage.impl.PGDatabase
@@ -13,21 +14,19 @@ interface UserProfileRepository : Repository<UserProfile> {
 }
 
 class UserProfileRepositoryImpl @Inject constructor(private val database: PGDatabase) : UserProfileRepository {
-    override suspend fun find(id: String): UserProfile? {
+    override suspend fun save(dto: DTO): UserProfile {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun find(id: String): UserProfile {
         val client = database.client()
         val queryResult = client.preparedQuery(FIND_USER_PROFILE_QUERY).execute(Tuple.of(id))
             .toCompletionStage().asDeferred()
 
         val rowSet = queryResult.await()
 
-        return try {
-            val userProfileJson = rowSet.first().toJson()
-            UserProfile.fromJson(userProfileJson)
-        } catch (e: NoSuchElementException) {
-            null
-        } finally {
-            client.close()
-        }
+        val userProfileJson = rowSet.first().toJson()
+        return UserProfile.fromJson(userProfileJson)
     }
 
     override suspend fun findAll(): List<UserProfile> {

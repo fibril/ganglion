@@ -13,21 +13,11 @@ data class UserProfile(
     var avatarUrl: String? = null,
     val additionalKeyValues: JsonObject = JsonObject()
 ) : UserProfileModel {
-    override fun asJson(permittedFields: List<String>?): JsonObject =
+    override fun asJson(): JsonObject =
         JsonObject()
             .put(PROFILE_DISPLAY_NAME_KEY, displayName)
             .put(PROFILE_AVATAR_URL_KEY, avatarUrl)
             .mergeIn(additionalKeyValues)
-            .apply {
-                val currentJsonObject = this.copy()
-                if ((permittedFields?.size ?: 0) > 0) {
-                    return this.clear().also {
-                        for (field in permittedFields!!) {
-                            this.put(field, currentJsonObject.getValue(field) ?: null)
-                        }
-                    }
-                }
-            }
 
     companion object {
         val PROFILE_DISPLAY_NAME_KEY = ResourceBundleConstants.matrixFields.getString("profile.displayname")

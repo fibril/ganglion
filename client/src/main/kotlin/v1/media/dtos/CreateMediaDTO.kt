@@ -1,15 +1,12 @@
-package v1.users.dtos
+package v1.media.dtos
 
 import DTO
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.web.RoutingContext
 import io.vertx.json.schema.JsonSchema
 import io.vertx.json.schema.common.dsl.Schemas
 import v1.users.models.MatrixUserId
 
-data class GetUserProfileDTO constructor(val json: JsonObject) : DTO {
-    internal constructor(routingContext: RoutingContext) : this(JsonObject.mapFrom(routingContext.pathParams()))
-
+data class CreateMediaDTO(val json: JsonObject) : DTO {
     override val schema: JsonSchema
         get() = JsonSchema.of(
             Schemas.objectSchema()

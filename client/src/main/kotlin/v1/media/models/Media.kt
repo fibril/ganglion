@@ -1,7 +1,12 @@
 package v1.media.models
 
 import Model
+import com.google.inject.Inject
 import io.vertx.core.json.JsonObject
+import java.util.*
+
+
+interface MediaModel : Model
 
 /**
  * id
@@ -32,12 +37,18 @@ import io.vertx.core.json.JsonObject
  * width
  * animated
  */
-data class Media(val matrixContentUrl: String) : Model {
+data class Media @Inject constructor(
+    val mediaId: String,
+    val additionalKeyValues: JsonObject = JsonObject()
+) : MediaModel {
     companion object {
-        const val MATRIX_CONTENT_PREFIX = "mxc://"
+        const val MATRIX_CONTENT_PROTOCOL = "mxc://"
     }
 
-    override fun asJson(permittedFields: List<String>?): JsonObject {
-        TODO("Not yet implemented")
-    }
+    override fun asJson(): JsonObject =
+        JsonObject().put("id", mediaId).put("content_uri", uri).mergeIn(additionalKeyValues)
+
+    private val domain = ResourceBundle.getBundle("application").getString("domain")
+
+    val uri = MATRIX_CONTENT_PROTOCOL + domain + "/" + mediaId
 }

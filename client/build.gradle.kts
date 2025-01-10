@@ -13,6 +13,8 @@ dependencies {
     implementation(libs.resilience4j.ratelimiter)
     implementation(libs.resilience4j.kotlin)
     implementation(libs.guice)
+    implementation(libs.bcrypt)
+    implementation(project(":auth"))
     implementation(project(":storage"))
     testImplementation(kotlin("test"))
     testImplementation(platform(libs.junit.bom))

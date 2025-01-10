@@ -1,4 +1,7 @@
+import errors.ErrorCodes
+import errors.StandardErrorResponse
 import io.vertx.core.json.JsonObject
+import io.vertx.ext.web.RoutingContext
 import io.vertx.json.schema.*
 
 
@@ -29,12 +32,26 @@ interface DTO {
             }
         }
 
-        fun useDTOValidation(dto: DTO, onValidationFailure: () -> Unit, block: () -> Unit) {
+        fun useDTOValidation(
+            dto: DTO,
+            context: RoutingContext,
+            onValidationFailure: ((routingContext: RoutingContext) -> Unit)? = ::defaultOnValidationFailure,
+            onValidationSuccess: () -> Unit
+        ) {
             if (dto.validate()) {
-                block()
+                onValidationSuccess()
             } else {
-                onValidationFailure()
+                onValidationFailure!!(context)
             }
+        }
+
+        private fun defaultOnValidationFailure(context: RoutingContext) {
+            context.response().setStatusCode(400)
+            context.end(
+                StandardErrorResponse(
+                    ErrorCodes.M_INVALID_PARAM,
+                ).toString()
+            )
         }
     }
 }

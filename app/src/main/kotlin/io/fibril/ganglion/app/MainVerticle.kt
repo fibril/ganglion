@@ -1,29 +1,35 @@
 package io.fibril.ganglion.app
 
+import ClientModule
+import Service
 import com.google.inject.Guice
 import io.fibril.ganglion.app.verticles.MigrationWorkerVerticle
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import v1.RoutesV1
-import v1.users.UserModule
-import v1.users.services.UserProfileService
-import v1.users.services.UserService
-import java.lang.reflect.Field
+import v1.media.MediaService
+import v1.users.UserProfileService
+import v1.users.UserService
 
 
 class MainVerticle : CoroutineVerticle() {
     override suspend fun start() {
         deployMigrationWorkerVerticle(vertx).onComplete {
             if (it.succeeded()) {
-                val injector = Guice.createInjector(UserModule(vertx))
-                val userService = injector.getInstance(UserService::class.java)
-                val userProfileService = injector.getInstance(UserProfileService::class.java)
+                val injector = Guice.createInjector(ClientModule(vertx))
 
-                val servicesMap = mapOf(
-                    userService.identifier to userService,
-                    userProfileService.identifier to userProfileService
+                val services = listOf(
+                    injector.getInstance(UserService::class.java),
+                    injector.getInstance(UserProfileService::class.java),
+                    injector.getInstance(MediaService::class.java)
                 )
+
+                val servicesMap: Map<String, Service<*>> = mutableMapOf<String, Service<*>>().apply {
+                    for (service in services) {
+                        this[service.identifier] = service
+                    }
+                }
 
                 val router = RoutesV1(vertx, servicesMap).router
 
@@ -36,13 +42,6 @@ class MainVerticle : CoroutineVerticle() {
                         } else {
                         }
                     }
-
-                for (r in router.routes) {
-                    // Path is public, but methods are not. We change that
-                    val f: Field = r.javaClass.getDeclaredField("state")
-                    f.setAccessible(true)
-                    println(f.get(r).toString() + r.path)
-                }
             }
         }
 
