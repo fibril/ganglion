@@ -6,7 +6,8 @@ plugins {
 
 
 dependencies {
-    api(libs.pg.client)
+    api(libs.vertx.pg.client)
+    api(libs.vertx.redis.client)
     implementation(libs.vertx.config)
     implementation(libs.vertx.kotlin.coroutines)
     implementation(libs.kotlinx.coroutines.core)

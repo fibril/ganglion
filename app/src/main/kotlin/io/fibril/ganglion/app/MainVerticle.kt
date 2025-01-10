@@ -1,16 +1,16 @@
 package io.fibril.ganglion.app
 
-import ClientModule
-import Service
+import io.fibril.ganglion.client.ClientModule
+import io.fibril.ganglion.client.Service
 import com.google.inject.Guice
 import io.fibril.ganglion.app.verticles.MigrationWorkerVerticle
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import v1.RoutesV1
-import v1.media.MediaService
-import v1.users.UserProfileService
-import v1.users.UserService
+import io.fibril.ganglion.client.v1.RoutesV1
+import io.fibril.ganglion.client.v1.media.MediaService
+import io.fibril.ganglion.client.v1.users.UserProfileService
+import io.fibril.ganglion.client.v1.users.UserService
 
 
 class MainVerticle : CoroutineVerticle() {

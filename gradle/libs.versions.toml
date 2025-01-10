@@ -20,7 +20,8 @@ vertx-json-schema = { group = "io.vertx", name = "vertx-json-schema", version.re
 vertx-auth-jwt = { group = "io.vertx", name = "vertx-auth-jwt", version.ref = "vertx" }
 
 ### DATABASES
-pg-client = { group = "io.vertx", name = "vertx-pg-client", version.ref = "vertx" }
+vertx-pg-client = { group = "io.vertx", name = "vertx-pg-client", version.ref = "vertx" }
+vertx-redis-client = { group = "io.vertx", name = "vertx-redis-client", version.ref = "vertx" }
 
 ### KOTLINX-COROUTINES
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }

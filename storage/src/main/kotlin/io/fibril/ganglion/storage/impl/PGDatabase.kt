@@ -7,7 +7,7 @@ import io.vertx.pgclient.PgBuilder
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.SqlClient
 
-class PGDatabase @Inject constructor(val vertx: Vertx) : Database {
+class PGDatabase @Inject constructor(val vertx: Vertx) : Database<SqlClient> {
     private val dbEngine = PGEngine(vertx)
 
     override suspend fun client(): SqlClient {

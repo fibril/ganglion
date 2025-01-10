@@ -1,9 +1,9 @@
 package v1.models
 
-import DTO
+import io.fibril.ganglion.client.DTO
 import io.vertx.core.json.JsonObject
 import org.junit.jupiter.api.Test
-import v1.users.models.User
+import io.fibril.ganglion.client.v1.users.models.User
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
