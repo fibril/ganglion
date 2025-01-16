@@ -1,21 +1,22 @@
 package io.fibril.ganglion.client.v1.users
 
+import com.google.inject.Inject
 import io.fibril.ganglion.client.Controller
 import io.fibril.ganglion.client.DTO
-import com.google.inject.Inject
 import io.fibril.ganglion.client.extensions.only
-import io.vertx.core.Vertx
-import io.vertx.ext.web.Router
-import io.vertx.ext.web.RoutingContext
 import io.fibril.ganglion.client.utils.CoroutineHelpers
 import io.fibril.ganglion.client.v1.users.dtos.GetUserProfileDTO
 import io.fibril.ganglion.client.v1.users.models.MatrixUserId
+import io.vertx.core.Vertx
+import io.vertx.ext.web.Router
+import io.vertx.ext.web.RoutingContext
 
 internal class UserProfileController @Inject constructor(vertx: Vertx, val userProfileService: UserProfileService) :
     Controller(vertx) {
     override fun mountSubRoutes(): Router {
 
-        router.get(USER_PROFILE_PATH).handler(::getUserProfileByUserId)
+        router.get(USER_PROFILE_PATH)
+            .handler(::getUserProfileByUserId)
 
         router.get(USER_AVATAR_URL_PATH).handler(::getUserAvatarUrl)
 

@@ -1,15 +1,16 @@
 package io.fibril.ganglion.client.v1
 
-import io.fibril.ganglion.client.Service
 import com.google.inject.Inject
-import io.vertx.core.Vertx
-import io.vertx.ext.web.Router
+import io.fibril.ganglion.client.Service
+import io.fibril.ganglion.client.v1.authentication.AuthController
+import io.fibril.ganglion.client.v1.authentication.AuthService
+import io.fibril.ganglion.client.v1.authentication.AuthServiceImpl
 import io.fibril.ganglion.client.v1.media.MediaController
 import io.fibril.ganglion.client.v1.media.MediaService
 import io.fibril.ganglion.client.v1.media.MediaServiceImpl
 import io.fibril.ganglion.client.v1.users.*
-import io.fibril.ganglion.client.v1.users.UserController
-import io.fibril.ganglion.client.v1.users.UserProfileController
+import io.vertx.core.Vertx
+import io.vertx.ext.web.Router
 
 
 class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Map<String, Service<*>>) {
@@ -20,21 +21,30 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
     }
 
     private fun composeSubRoutes() {
+        // USER
         val usersRouter =
             UserController(vertx, servicesMap[UserServiceImpl.IDENTIFIER] as UserService).mountSubRoutes()
         val userProfileRouter =
             UserProfileController(vertx, servicesMap[UserProfileServiceImpl.IDENTIFIER] as UserProfileService)
                 .mountSubRoutes()
 
+        // MEDIA
         val mediaController = MediaController(vertx, servicesMap[MediaServiceImpl.IDENTIFIER] as MediaService)
         val mediaRouter = mediaController.mountSubRoutes()
         val mediaCreationAndUploadRouter = mediaController.mountMediaCreateAndUploadRoutes()
+
+        // AUTHENTICATION
+        val authControllerRouter =
+            AuthController(vertx, servicesMap[AuthServiceImpl.IDENTIFIER] as AuthService).mountSubRoutes()
+
+
 
         router.route(PATH_PREFIX).subRouter(usersRouter)
         router.route(PATH_PREFIX).subRouter(userProfileRouter)
         router.route(PATH_PREFIX).subRouter(mediaRouter)
         // no path prefix
         router.route().subRouter(mediaCreationAndUploadRouter)
+        router.route(PATH_PREFIX).subRouter(authControllerRouter)
 
     }
 

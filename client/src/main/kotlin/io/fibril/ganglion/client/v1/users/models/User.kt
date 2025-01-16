@@ -1,7 +1,7 @@
 package io.fibril.ganglion.client.v1.users.models
 
-import io.fibril.ganglion.client.Model
 import com.google.inject.Inject
+import io.fibril.ganglion.client.Model
 import io.vertx.core.json.JsonObject
 
 interface UserModel : Model {
@@ -34,6 +34,8 @@ data class User @Inject constructor(
         }
 
 
+        val PasswordRegex = Regex("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$")
+        val UsernameRegex = Regex("""^[a-zA-Z0-9_\-=./]+$""")
     }
 
 

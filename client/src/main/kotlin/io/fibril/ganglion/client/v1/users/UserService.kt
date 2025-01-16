@@ -1,18 +1,19 @@
 package io.fibril.ganglion.client.v1.users
 
-import io.fibril.ganglion.client.DTO
-import io.fibril.ganglion.authentication.JWTAuthProviderImpl
-import io.fibril.ganglion.client.Service
 import com.google.inject.Inject
+import io.fibril.ganglion.authentication.GanglionJWTAuthProviderImpl
+import io.fibril.ganglion.authentication.TokenType
+import io.fibril.ganglion.client.DTO
+import io.fibril.ganglion.client.Service
 import io.fibril.ganglion.client.errors.ErrorCodes
 import io.fibril.ganglion.client.errors.RequestException
 import io.fibril.ganglion.client.errors.StandardErrorResponse
-import io.vertx.core.Future
-import io.vertx.core.json.JsonObject
-import io.vertx.sqlclient.DatabaseException
 import io.fibril.ganglion.client.v1.users.dtos.CreateUserDTO
 import io.fibril.ganglion.client.v1.users.models.MatrixUserId
 import io.fibril.ganglion.client.v1.users.models.User
+import io.vertx.core.Future
+import io.vertx.core.json.JsonObject
+import io.vertx.sqlclient.DatabaseException
 import java.util.*
 
 
@@ -22,7 +23,7 @@ interface UserService : Service<User> {
 
 class UserServiceImpl @Inject constructor(
     private val userRepository: UserRepositoryImpl,
-    private val jwtAuthProvider: JWTAuthProviderImpl
+    private val jwtAuthProvider: GanglionJWTAuthProviderImpl
 ) : UserService {
     override val identifier = IDENTIFIER
 
@@ -68,7 +69,16 @@ class UserServiceImpl @Inject constructor(
                 User.fromJson(
                     user.asJson().put(
                         "access_token",
-                        jwtAuthProvider.generateToken(JsonObject().put("sub", matrixUserId.toString()))
+                        jwtAuthProvider.generateToken(
+                            JsonObject().put("sub", matrixUserId.toString()),
+                            TokenType.ACCESS
+                        )
+                    ).put(
+                        "refresh_token",
+                        jwtAuthProvider.generateToken(
+                            JsonObject().put("sub", matrixUserId.toString()),
+                            TokenType.REFRESH
+                        )
                     )
                 )
             )
