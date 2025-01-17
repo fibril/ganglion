@@ -1,9 +1,9 @@
 CREATE TABLE IF NOT EXISTS passwords (
-    id varchar PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
+    id VARCHAR PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    user_id varchar NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    hash varchar NOT NULL,
+    user_id VARCHAR NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    hash VARCHAR NOT NULL,
     CONSTRAINT one_password_per_user UNIQUE (user_id)
 );
 

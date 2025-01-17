@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS users (
-    id varchar(510) PRIMARY KEY NOT NULL CHECK (id ~ '^@[a-zA-Z0-9_\-./]+:[a-zA-Z0-9\-._~]+$'),
+    id VARCHAR(510) PRIMARY KEY NOT NULL CHECK (id ~ '^@[a-zA-Z0-9_\-./]+:[a-zA-Z0-9\-._~]+$'),
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     confirmed_at TIMESTAMP WITHOUT TIME ZONE,

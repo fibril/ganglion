@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS user_profiles (
-    id varchar PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
+    id VARCHAR PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    user_id varchar NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    avatar_id varchar REFERENCES media (id),
-    display_name varchar(255),
+    user_id VARCHAR NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    avatar_id VARCHAR REFERENCES media (id),
+    display_name VARCHAR(255),
     CONSTRAINT one_user_profile_per_user UNIQUE (user_id)
 );
 

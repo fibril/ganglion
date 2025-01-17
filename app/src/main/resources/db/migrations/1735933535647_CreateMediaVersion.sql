@@ -1,11 +1,11 @@
 CREATE TABLE IF NOT EXISTS media_versions (
-    id varchar PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
+    id VARCHAR PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    name varchar(20) NOT NULL DEFAULT 'original',
+    name VARCHAR(20) NOT NULL DEFAULT 'original',
     file_data BYTEA NOT NULL,
-    height smallint,
-    width  smallint,
+    height SMALLINT,
+    width  SMALLINT,
     animated BOOLEAN NOT NULL DEFAULT FALSE,
 
     media_id varchar NOT NULL REFERENCES media (id) ON DELETE CASCADE,
