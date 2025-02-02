@@ -60,11 +60,12 @@ class RoomServiceImpl @Inject constructor(
     override val identifier = IDENTIFIER
 
     override suspend fun create(dto: DTO): Future<Room> {
-        val createRoomJson = (dto as CreateRoomDTO).json.copy().apply {
+        val createRoomJson = (dto as CreateRoomDTO).params().apply {
             if (getString("id") == null) {
                 put("id", Utils.generateRoomId())
             }
         }
+        println("createRoomJson $createRoomJson")
         val senderId = dto.sender?.principal()?.getString("sub")
 
         val roomId = createRoomJson.getString("id")
@@ -238,7 +239,7 @@ class RoomServiceImpl @Inject constructor(
             "public_chat" -> {
                 eventsMap[RoomEventNames.StateEvents.JOIN_RULES] =
                     CreateRoomEventDTO(
-                        defaultPresetJoinRuleEvent.json.apply {
+                        defaultPresetJoinRuleEvent.params().apply {
                             put(
                                 "content",
                                 JsonObject.of("join_rule", "public")
@@ -250,7 +251,7 @@ class RoomServiceImpl @Inject constructor(
                 eventsMap[RoomEventNames.StateEvents.HISTORY_VISIBILITY] = defaultPresetHistoryVisibilityEvent
                 eventsMap[RoomEventNames.StateEvents.GUEST_ACCESS] =
                     CreateRoomEventDTO(
-                        defaultPresetGuestAccessEvent.json.apply {
+                        defaultPresetGuestAccessEvent.params().apply {
                             put(
                                 "content",
                                 JsonObject.of("guest_access", "forbidden")
@@ -397,7 +398,9 @@ class RoomServiceImpl @Inject constructor(
             // TODO:- Determine which failed
             val failedEventNames = mutableListOf<String>().apply {
                 for (event in eventsToCreate) {
-                    if (createdRoomEvents.find { roomEvent -> roomEvent.id == event.json.getString("id") } == null) {
+                    if (createdRoomEvents.find { roomEvent ->
+                            roomEvent.id == event.params().getString("id")
+                        } == null) {
                         add(event.roomEventName)
                     }
                 }

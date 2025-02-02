@@ -10,7 +10,8 @@ import io.vertx.json.schema.common.dsl.Schemas
 
 import io.vertx.ext.auth.User as VertxUser
 
-data class CreateDeviceDTO constructor(val json: JsonObject, override val sender: VertxUser? = null) : DTO(json) {
+data class CreateDeviceDTO constructor(private val json: JsonObject, override val sender: VertxUser? = null) :
+    DTO(json) {
     internal constructor(routingContext: RoutingContext) : this(JsonObject.mapFrom(routingContext.pathParams()))
 
     override val schema: JsonSchema
@@ -24,6 +25,11 @@ data class CreateDeviceDTO constructor(val json: JsonObject, override val sender
                 .optionalProperty("device_id", Schemas.stringSchema())
                 .toJson()
         )
+
+
+    override val permittedParams: Set<String> = json.map.keys
+
+    override val paramNameTransformMapping: Map<String, String> = mapOf()
 
     override fun validate(): DTOValidationResult {
         return DTO.Helpers.validate(json, schema)

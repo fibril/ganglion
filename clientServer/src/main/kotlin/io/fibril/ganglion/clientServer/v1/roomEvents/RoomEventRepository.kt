@@ -24,7 +24,7 @@ interface RoomEventRepository : Repository<RoomEvent>
 
 class RoomEventRepositoryImpl @Inject constructor(private val database: PGDatabase) : RoomEventRepository {
     override suspend fun save(dto: DTO): RoomEvent {
-        val createRoomEventDTO = dto as CreateRoomEventDTO
+        val params = dto.params()
 
         val pool = database.pool()
         val result: Promise<JsonObject?> = Promise.promise()
@@ -38,18 +38,18 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
                     .compose { tx ->
                         conn.preparedQuery(CREATE_ROOM_EVENT_QUERY).execute(
                             Tuple.of(
-                                createRoomEventDTO.json.getString("id"),
-                                createRoomEventDTO.sender.principal().getString("sub"),
-                                createRoomEventDTO.json.getString("room_id"),
-                                createRoomEventDTO.json.getString("content"),
-                                createRoomEventDTO.json.getString("state_key"),
-                                createRoomEventDTO.json.getString("type"),
+                                params.getString("id"),
+                                (dto as CreateRoomEventDTO).sender.principal().getString("sub"),
+                                params.getString("room_id"),
+                                params.getString("content"),
+                                params.getString("state_key"),
+                                params.getString("type"),
                             )
                         )
                             .compose { createdRoomEvent ->
                                 createRoomEventResponseRowSet = createdRoomEvent
-                                if (createRoomEventDTO.roomEventName == RoomEventNames.StateEvents.CANONICAL_ALIAS) {
-                                    val aliasId = createRoomEventDTO.json.getJsonObject("content").getString("alias")
+                                if (dto.roomEventName == RoomEventNames.StateEvents.CANONICAL_ALIAS) {
+                                    val aliasId = params.getJsonObject("content").getString("alias")
                                     val roomId = createdRoomEvent.first().toJson().getString("room_id")
                                     val servers = arrayOf<String>(ResourceBundleConstants.domain)
                                     conn.preparedQuery(RoomRepositoryImpl.CREATE_ROOM_ALIAS_QUERY)

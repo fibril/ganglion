@@ -10,7 +10,10 @@ import io.vertx.json.schema.common.dsl.Keywords
 import io.vertx.json.schema.common.dsl.Schemas
 import io.vertx.ext.auth.User as VertxUser
 
-data class CreateRoomAliasDTO @Inject constructor(val json: JsonObject, override val sender: VertxUser? = null) :
+data class CreateRoomAliasDTO @Inject constructor(
+    private val json: JsonObject,
+    override val sender: VertxUser? = null
+) :
     DTO(json) {
     override val schema: JsonSchema
         get() = JsonSchema.of(
@@ -22,6 +25,9 @@ data class CreateRoomAliasDTO @Inject constructor(val json: JsonObject, override
                 .optionalProperty("servers", Schemas.arraySchema().with(Keywords.uniqueItems()))
                 .toJson()
         )
+    override val permittedParams: Set<String> = json.map.keys
+
+    override val paramNameTransformMapping: Map<String, String> = mapOf()
 
     override fun validate(): DTOValidationResult {
         return Helpers.validate(json, schema)

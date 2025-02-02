@@ -7,7 +7,6 @@ import io.fibril.ganglion.clientServer.extensions.exclude
 import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
 import io.fibril.ganglion.clientServer.utils.Utils
 import io.fibril.ganglion.clientServer.v1.authentication.AuthServiceImpl
-import io.fibril.ganglion.clientServer.v1.users.dtos.CreateUserDTO
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.fibril.ganglion.clientServer.v1.users.models.User
 import io.fibril.ganglion.storage.impl.PGDatabase
@@ -27,8 +26,10 @@ class UserRepositoryImpl @Inject constructor(private val database: PGDatabase) :
     override suspend fun save(dto: DTO): User {
         val pool = database.pool()
 
+        val params = dto.params()
+
         val userId = MatrixUserId(
-            (dto as CreateUserDTO).json.getString("username"),
+            params.getString("username"),
             ResourceBundle.getBundle("application").getString("domain")
         ).toString()
 
@@ -49,7 +50,7 @@ class UserRepositoryImpl @Inject constructor(private val database: PGDatabase) :
                                     .execute(
                                         Tuple.of(
                                             userId,
-                                            AuthServiceImpl.generatePasswordHash(dto.json.getString("password"))
+                                            AuthServiceImpl.generatePasswordHash(params.getString("password"))
                                         )
                                     )
                                     .compose { createPasswordResponse ->
@@ -57,9 +58,9 @@ class UserRepositoryImpl @Inject constructor(private val database: PGDatabase) :
                                             .preparedQuery(CREATE_DEVICE_QUERY)
                                             .execute(
                                                 Tuple.of(
-                                                    dto.json.getString("device_id") ?: Utils.idGenerator(),
+                                                    params.getString("device_id") ?: Utils.idGenerator(),
                                                     userId,
-                                                    dto.json.getString("initial_device_display_name")
+                                                    params.getString("initial_device_display_name")
                                                 )
                                             )
                                     }

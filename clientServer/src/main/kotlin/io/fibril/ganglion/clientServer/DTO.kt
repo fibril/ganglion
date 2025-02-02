@@ -9,7 +9,7 @@ import io.vertx.ext.auth.User as VertxUser
 
 data class DTOValidationResult(val valid: Boolean, val errors: JsonObject)
 
-abstract class DTO(json: JsonObject) {
+abstract class DTO(private val json: JsonObject) {
 
     /**
      * Authenticated Vertx user object.
@@ -22,7 +22,32 @@ abstract class DTO(json: JsonObject) {
      */
     abstract val schema: JsonSchema
 
+    /**
+     * A set of params that can be saved to the database
+     */
+    abstract val permittedParams: Set<String>
+
+    /**
+     * Provide an alternative mapping of supplied parameter name to desired name.
+     * For example, you can map a param named userId to user_id, this will replace
+     * the name of the param userId with user_id
+     */
+    abstract val paramNameTransformMapping: Map<String, String>
+
     abstract fun validate(): DTOValidationResult
+
+
+    fun params(): JsonObject {
+        return JsonObject().apply {
+            val keys = this@DTO.json.map.keys
+            for (key in keys) {
+                val newKeyName = paramNameTransformMapping[key] ?: key
+                if (permittedParams.contains(key)) {
+                    put(newKeyName, json.getValue(key))
+                }
+            }
+        }
+    }
 
     object Helpers {
         fun validate(json: JsonObject, schema: JsonSchema): DTOValidationResult {

@@ -9,7 +9,7 @@ import io.vertx.json.schema.common.dsl.Schemas
 
 import io.vertx.ext.auth.User as VertxUser
 
-data class UpdateUserDTO(val json: JsonObject, override val sender: VertxUser? = null) : DTO(json) {
+data class UpdateUserDTO(private val json: JsonObject, override val sender: VertxUser? = null) : DTO(json) {
     override val schema: JsonSchema
         get() = JsonSchema.of(
             Schemas.objectSchema()
@@ -18,6 +18,11 @@ data class UpdateUserDTO(val json: JsonObject, override val sender: VertxUser? =
                     Schemas.stringSchema()
                 ).toJson()
         )
+
+
+    override val permittedParams: Set<String> = json.map.keys
+
+    override val paramNameTransformMapping: Map<String, String> = mapOf()
 
     override fun validate(): DTOValidationResult {
         return DTO.Helpers.validate(json, schema)

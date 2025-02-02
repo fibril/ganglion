@@ -10,7 +10,7 @@ import io.vertx.ext.auth.User
 import io.vertx.json.schema.JsonSchema
 
 data class CreateRoomEventDTO @Inject constructor(
-    val json: JsonObject,
+    private val json: JsonObject,
     val roomEventName: String,
     override val sender: User
 ) : DTO(json) {
@@ -28,6 +28,9 @@ data class CreateRoomEventDTO @Inject constructor(
                 )
             )
         }
+    override val permittedParams: Set<String> = json.map.keys
+
+    override val paramNameTransformMapping: Map<String, String> = mapOf()
 
     override fun validate(): DTOValidationResult {
         return Helpers.validate(json, schema)

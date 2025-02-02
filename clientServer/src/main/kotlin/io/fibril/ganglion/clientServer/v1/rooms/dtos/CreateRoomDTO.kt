@@ -4,14 +4,14 @@ import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.DTOValidationResult
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventSchemas
+import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.vertx.core.json.JsonObject
 import io.vertx.json.schema.JsonSchema
-import io.vertx.json.schema.common.dsl.Keywords
 import io.vertx.json.schema.common.dsl.Schemas
-
 import io.vertx.ext.auth.User as VertxUser
 
-data class CreateRoomDTO @Inject constructor(val json: JsonObject, override val sender: VertxUser? = null) : DTO(json) {
+data class CreateRoomDTO @Inject constructor(private val json: JsonObject, override val sender: VertxUser? = null) :
+    DTO(json) {
     override val schema: JsonSchema
         get() = JsonSchema.of(
             Schemas.objectSchema()
@@ -28,7 +28,10 @@ data class CreateRoomDTO @Inject constructor(val json: JsonObject, override val 
                             .optionalProperty("state_key", Schemas.stringSchema())
                     )
                 )
-                .optionalProperty("invite", Schemas.arraySchema().with(Keywords.uniqueItems()))
+                .optionalProperty(
+                    "invite",
+                    Schemas.arraySchema().items(MatrixUserId.createMatrixUserIdStringSchema())
+                )
                 .optionalProperty(
                     "invite_3pid", Schemas.arraySchema().items(
                         Schemas.objectSchema()
@@ -51,6 +54,9 @@ data class CreateRoomDTO @Inject constructor(val json: JsonObject, override val 
                 .optionalProperty("visibility", Schemas.stringSchema())
                 .toJson()
         )
+    override val permittedParams: Set<String> = json.map.keys
+
+    override val paramNameTransformMapping: Map<String, String> = mapOf()
 
     override fun validate(): DTOValidationResult {
         return Helpers.validate(json, schema)

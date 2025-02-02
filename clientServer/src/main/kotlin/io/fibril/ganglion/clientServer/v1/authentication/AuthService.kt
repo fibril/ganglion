@@ -37,7 +37,8 @@ class AuthServiceImpl @Inject constructor(
     }
 
     override suspend fun login(loginDTO: LoginDTO): Future<JsonObject> {
-        val loginType = loginDTO.json.getString("type") ?: return Future.failedFuture(
+        val params = loginDTO.params()
+        val loginType = params.getString("type") ?: return Future.failedFuture(
             RequestException(
                 statusCode = 400,
                 "Invalid login type",
@@ -56,7 +57,7 @@ class AuthServiceImpl @Inject constructor(
         }
 
         val domain = ResourceBundle.getBundle("application").getString("domain")
-        val username = loginDTO.json.getJsonObject("identifier").getString("user")
+        val username = params.getJsonObject("identifier").getString("user")
         val matrixUserId = MatrixUserId(username, domain)
         val user = userRepository.find(matrixUserId.toString())
             ?: return Future.failedFuture(
@@ -78,8 +79,8 @@ class AuthServiceImpl @Inject constructor(
                 )
 
 
-        if (BCrypt.checkpw(loginDTO.json.getString("password"), password.asJson().getString("hash"))) {
-            val deviceId = loginDTO.json.getString("device_id")
+        if (BCrypt.checkpw(params.getString("password"), password.asJson().getString("hash"))) {
+            val deviceId = params.getString("device_id")
             val device = if (deviceId != null) {
                 deviceRepository.find(deviceId) ?: deviceRepository.save(
                     CreateDeviceDTO(
@@ -87,7 +88,7 @@ class AuthServiceImpl @Inject constructor(
                             .put("device_id", deviceId)
                             .put(
                                 "display_name",
-                                loginDTO.json.getString("initial_device_display_name") ?: "Generic Device"
+                                params.getString("initial_device_display_name") ?: "Generic Device"
                             )
                             .put("user_id", matrixUserId.toString())
                     )
@@ -96,7 +97,7 @@ class AuthServiceImpl @Inject constructor(
                 CreateDeviceDTO(
                     JsonObject()
                         .put("device_id", Utils.idGenerator())
-                        .put("display_name", loginDTO.json.getString("initial_device_display_name") ?: "Generic Device")
+                        .put("display_name", params.getString("initial_device_display_name") ?: "Generic Device")
                         .put("user_id", matrixUserId.toString())
                 )
             )

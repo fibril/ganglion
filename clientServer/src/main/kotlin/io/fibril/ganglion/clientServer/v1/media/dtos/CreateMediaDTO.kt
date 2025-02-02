@@ -19,6 +19,10 @@ data class CreateMediaDTO(val json: JsonObject, override val sender: VertxUser? 
                 )
                 .toJson()
         )
+    override val permittedParams: Set<String>
+        get() = TODO("Not yet implemented")
+    override val paramNameTransformMapping: Map<String, String>
+        get() = TODO("Not yet implemented")
 
     override fun validate(): DTOValidationResult {
         return DTO.Helpers.validate(json, schema)

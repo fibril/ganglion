@@ -8,7 +8,6 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
-import io.fibril.ganglion.clientServer.v1.users.dtos.CreateUserDTO
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.fibril.ganglion.clientServer.v1.users.models.User
 import io.vertx.core.Future
@@ -33,8 +32,8 @@ class UserServiceImpl @Inject constructor(
 
 
     override suspend fun create(dto: DTO): Future<User> {
-        val createUserDTO = dto as CreateUserDTO
-        val username = createUserDTO.json.getString("username")
+        val params = dto.params()
+        val username = params.getString("username")
         val domain = ResourceBundle.getBundle("application").getString("domain")
 
         val matrixUserId = try {
@@ -62,7 +61,7 @@ class UserServiceImpl @Inject constructor(
                 )
             }
 
-            if (createUserDTO.json.getBoolean("inhibit_login") ?: true) {
+            if (params.getBoolean("inhibit_login") ?: true) {
                 return Future.succeededFuture(user)
             }
             return Future.succeededFuture(

@@ -24,14 +24,14 @@ interface RoomRepository : Repository<Room> {
 
 class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) : RoomRepository {
     override suspend fun save(dto: DTO): Room {
-        val createRoomDTO = dto as CreateRoomDTO
-        val id = createRoomDTO.json.getString("id")
-        val creatorId = createRoomDTO.sender?.principal()?.getString("sub")
-        val isDirect = createRoomDTO.json.getString("is_direct") ?: false
+        val params = dto.params()
+        val id = params.getString("id")
+        val creatorId = (dto as CreateRoomDTO).sender?.principal()?.getString("sub")
+        val isDirect = params.getString("is_direct") ?: false
 //        val roomAliasName = createRoomDTO.json.getString("room_alias_name")
-        val type = createRoomDTO.json.getString("type")
-        val version = createRoomDTO.json.getString("room_version")
-        val visibility = createRoomDTO.json.getString("visibility")
+        val type = params.getString("type")
+        val version = params.getString("room_version")
+        val visibility = params.getString("visibility")
 
         val pool = database.pool()
 
@@ -148,9 +148,11 @@ class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         val result: Promise<JsonObject?> = Promise.promise()
         var error: PgException? = null
 
-        val id = createRoomAliasDTO.json.getString("id")
-        val roomId = createRoomAliasDTO.json.getString("room_id")
-        val servers = createRoomAliasDTO.json.getString("servers")
+        val params = createRoomAliasDTO.params()
+
+        val id = params.getString("id")
+        val roomId = params.getString("room_id")
+        val servers = params.getString("servers")
 
         client.preparedQuery(CREATE_ROOM_ALIAS_QUERY).execute(Tuple.of(id, roomId, servers))
             .onSuccess { res ->

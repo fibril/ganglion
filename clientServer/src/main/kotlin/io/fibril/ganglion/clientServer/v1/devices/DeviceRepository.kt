@@ -5,7 +5,6 @@ import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Repository
 import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
 import io.fibril.ganglion.clientServer.utils.Utils
-import io.fibril.ganglion.clientServer.v1.devices.dtos.CreateDeviceDTO
 import io.fibril.ganglion.storage.impl.PGDatabase
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.future.asDeferred
@@ -16,13 +15,14 @@ interface DeviceRepository : Repository<Device>
 class DeviceRepositoryImpl @Inject constructor(private val database: PGDatabase) : DeviceRepository {
 
     override suspend fun save(dto: DTO): Device? {
+        val params = dto.params()
         val client = database.client()
         val queryResult =
             client.preparedQuery(CREATE_DEVICE_QUERY).execute(
                 Tuple.of(
-                    (dto as CreateDeviceDTO).json.getString("device_id") ?: Utils.idGenerator(),
-                    dto.json.getString("user_id"),
-                    dto.json.getString("display_name") ?: "Device"
+                    params.getString("device_id") ?: Utils.idGenerator(),
+                    params.getString("user_id"),
+                    params.getString("display_name") ?: "Device"
                 )
             )
                 .toCompletionStage().asDeferred()

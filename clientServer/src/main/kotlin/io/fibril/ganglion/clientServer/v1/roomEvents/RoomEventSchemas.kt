@@ -18,7 +18,7 @@ object RoomEventSchemas {
         val POWER_LEVELS_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
                 .optionalProperty("ban", Schemas.intSchema())
-                .optionalProperty("events", Schemas.objectSchema())
+                .optionalProperty("events", Schemas.objectSchema().additionalProperties(Schemas.intSchema()))
                 .optionalProperty("events_default", Schemas.intSchema())
                 .optionalProperty("invite", Schemas.intSchema())
                 .optionalProperty("kick", Schemas.intSchema())
@@ -29,7 +29,11 @@ object RoomEventSchemas {
                 )
                 .optionalProperty("redact", Schemas.intSchema())
                 .optionalProperty("state_default", Schemas.intSchema())
-                .optionalProperty("users", Schemas.objectSchema())
+                .optionalProperty(
+                    "users", Schemas.objectSchema()
+                        .patternProperty(MatrixUserId.MatrixUserIdStringRegex.toPattern(), Schemas.intSchema())
+                        .allowAdditionalProperties(false)
+                )
                 .optionalProperty("users_default", Schemas.intSchema())
 
         val CREATE_ROOM_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
