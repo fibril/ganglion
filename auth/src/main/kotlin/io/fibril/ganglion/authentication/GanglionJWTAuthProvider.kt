@@ -29,18 +29,19 @@ class GanglionJWTAuthProviderImpl @Inject constructor(private val vertx: Vertx) 
         const val ALGORITHM = "RS256"
 
         private val defaultAccessTokenData = JsonObject()
-            .put("nbf", Date().time)
-            .put("iat", Date().time)
-            .put("exp", Date().time + (applicationBundle.getString("accessTokenLifetimeSecs").toLong() * 1000))
+            .put("nbf", Date().time / 1000L)
+            .put("iat", Date().time / 1000L)
+            .put("exp", (Date().time / 1000L) + (applicationBundle.getString("accessTokenLifetimeSecs").toLong()))
             .put("iss", applicationBundle.getString("domain"))
             .put("jti", UUID.randomUUID().toString())
             .put("type", TokenType.ACCESS.name)
 
-        private val defaultRefreshTokenData = defaultAccessTokenData.mergeIn(
-            JsonObject()
-                .put("exp", Date().time + (applicationBundle.getString("refreshTokenLifetimeSecs").toLong() * 1000))
-                .put("type", TokenType.REFRESH.name)
-        )
+        private val defaultRefreshTokenData = defaultAccessTokenData.copy().apply {
+            put("exp", (Date().time / 1000L) + (applicationBundle.getString("refreshTokenLifetimeSecs").toLong()))
+            put("type", TokenType.REFRESH.name)
+            put("jti", UUID.randomUUID().toString())
+        }
+
     }
 
     override val provider: JWTAuth
@@ -60,13 +61,14 @@ class GanglionJWTAuthProviderImpl @Inject constructor(private val vertx: Vertx) 
 
     override fun generateToken(tokenData: JsonObject, tokenType: TokenType): String {
         val defaultTokenData = if (tokenType == TokenType.ACCESS) defaultAccessTokenData else defaultRefreshTokenData
-        val tokenDataObject = defaultTokenData.mergeIn(tokenData)
+        val tokenDataObject = defaultTokenData.copy().mergeIn(tokenData)
         val token = provider.generateToken(tokenDataObject, JWTOptions().setAlgorithm(ALGORITHM))
         notifyTokenGenerated(tokenDataObject, token)
         return token
     }
 
-    fun authenticate(bearerToken: String) = provider.authenticate(TokenCredentials(bearerToken))
+    fun authenticate(bearerToken: String) =
+        provider.authenticate(TokenCredentials(bearerToken.substringAfter("Bearer ")))
 
 
     fun generateToken() = generateToken(JsonObject(), TokenType.ACCESS)

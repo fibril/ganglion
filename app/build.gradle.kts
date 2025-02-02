@@ -27,7 +27,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.guice)
     implementation(project(":storage"))
-    implementation(project(":client"))
+    implementation(project(":clientServer"))
     testImplementation(kotlin("test"))
 }
 

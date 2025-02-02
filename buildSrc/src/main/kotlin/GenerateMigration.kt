@@ -72,7 +72,7 @@ object StatementGenerator {
         if (tableName != null) {
             return """
                 CREATE TABLE IF NOT EXISTS $tableName (
-                    id varchar PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
+                    id VARCHAR PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
                     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
                     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
                 );

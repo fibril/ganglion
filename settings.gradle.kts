@@ -19,5 +19,5 @@ dependencyResolutionManagement {
 
 include("app")
 include("auth")
-include("client")
+include("clientServer")
 include("storage")

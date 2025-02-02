@@ -22,7 +22,7 @@
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/auth" />
             <option value="$PROJECT_DIR$/buildSrc" />
-            <option value="$PROJECT_DIR$/client" />
+            <option value="$PROJECT_DIR$/clientServer" />
             <option value="$PROJECT_DIR$/storage" />
           </set>
         </option>
