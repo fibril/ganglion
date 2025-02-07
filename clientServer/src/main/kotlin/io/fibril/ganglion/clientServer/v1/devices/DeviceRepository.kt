@@ -61,7 +61,7 @@ class DeviceRepositoryImpl @Inject constructor(private val database: PGDatabase)
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 
-    override suspend fun update(dto: DTO): Device? {
+    override suspend fun update(id: String, dto: DTO): Device? {
         TODO("Not yet implemented")
     }
 

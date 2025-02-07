@@ -3,39 +3,44 @@ package io.fibril.ganglion.clientServer.v1.roomEvents
 import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Service
+import io.fibril.ganglion.clientServer.errors.ErrorCodes
+import io.fibril.ganglion.clientServer.errors.RequestException
+import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEvent
 import io.vertx.core.Future
+import io.vertx.pgclient.PgException
 
 
-interface RoomEventService : Service<RoomEvent>
+interface RoomEventService : Service<RoomEvent> {
+    /**
+     * Fetch events satisfying arbitrary map of params
+     */
+    suspend fun fetchEvents(conditionsMap: Map<String, String>): Future<List<RoomEvent>?>
+}
 
 class RoomEventServiceImpl @Inject constructor(private val roomEventRepository: RoomEventRepository) :
     RoomEventService {
 
     companion object {
         const val IDENTIFIER = "v1.rooms.RoomEventService"
-        const val DEFAULT_ROOM_VERSION = 11
-
-        /**
-         * Specifies the order of events that will be created, if applicable,
-         * whenever a room is created
-         */
-        val roomCreationEventNamesInOrder = listOf(
-            RoomEventNames.StateEvents.CREATE,
-            RoomEventNames.StateEvents.MEMBER,
-            RoomEventNames.StateEvents.POWER_LEVELS,
-            RoomEventNames.StateEvents.CANONICAL_ALIAS,
-            RoomEventNames.StateEvents.JOIN_RULES,
-            RoomEventNames.StateEvents.HISTORY_VISIBILITY,
-            RoomEventNames.StateEvents.NAME,
-            RoomEventNames.StateEvents.TOPIC,
-        )
     }
 
     override val identifier = IDENTIFIER
 
     override suspend fun create(dto: DTO): Future<RoomEvent> {
-        TODO("Not yet implemented")
+        val roomEvent = try {
+            roomEventRepository.save(dto)
+        } catch (e: PgException) {
+            return Future.failedFuture(
+                RequestException(
+                    500,
+                    e.message ?: "Unknown Exception",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                )
+            )
+        }
+
+        return Future.succeededFuture(roomEvent)
     }
 
     override suspend fun findOne(id: String): Future<RoomEvent> {
@@ -52,6 +57,23 @@ class RoomEventServiceImpl @Inject constructor(private val roomEventRepository: 
 
     override suspend fun remove(id: String): Future<Boolean> {
         TODO("Not yet implemented")
+    }
+
+
+    override suspend fun fetchEvents(conditionsMap: Map<String, String>): Future<List<RoomEvent>?> {
+        val events = try {
+            roomEventRepository.fetchEvents(conditionsMap)
+        } catch (e: PgException) {
+            return Future.failedFuture(
+                RequestException(
+                    500,
+                    e.message ?: "Unknown Exception",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                )
+            )
+        }
+
+        return Future.succeededFuture(events)
     }
 
 }

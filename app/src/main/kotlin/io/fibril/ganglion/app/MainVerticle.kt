@@ -2,11 +2,13 @@ package io.fibril.ganglion.app
 
 import com.google.inject.Guice
 import io.fibril.ganglion.app.verticles.MigrationWorkerVerticle
+import io.fibril.ganglion.app.verticles.RoomEventsWorkerVerticle
 import io.fibril.ganglion.clientServer.ClientModule
 import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.v1.RoutesV1
 import io.fibril.ganglion.clientServer.v1.authentication.AuthService
 import io.fibril.ganglion.clientServer.v1.media.MediaService
+import io.fibril.ganglion.clientServer.v1.rooms.RoomAliasService
 import io.fibril.ganglion.clientServer.v1.rooms.RoomService
 import io.fibril.ganglion.clientServer.v1.users.UserProfileService
 import io.fibril.ganglion.clientServer.v1.users.UserService
@@ -19,6 +21,11 @@ class MainVerticle : CoroutineVerticle() {
     override suspend fun start() {
         deployMigrationWorkerVerticle(vertx).onComplete {
             if (it.succeeded()) {
+
+                deployWorkerVerticles(vertx).onComplete {
+                    println("Worker Verticles deployed")
+                }
+
                 val injector = Guice.createInjector(ClientModule(vertx))
 
                 val services = listOf(
@@ -26,7 +33,8 @@ class MainVerticle : CoroutineVerticle() {
                     injector.getInstance(UserProfileService::class.java),
                     injector.getInstance(MediaService::class.java),
                     injector.getInstance(AuthService::class.java),
-                    injector.getInstance(RoomService::class.java)
+                    injector.getInstance(RoomService::class.java),
+                    injector.getInstance(RoomAliasService::class.java)
                 )
 
                 val servicesMap: Map<String, Service<*>> = mutableMapOf<String, Service<*>>().apply {
@@ -46,6 +54,8 @@ class MainVerticle : CoroutineVerticle() {
                         } else {
                         }
                     }
+            } else {
+                // block
             }
         }
 
@@ -72,5 +82,9 @@ class MainVerticle : CoroutineVerticle() {
 
     private fun deployMigrationWorkerVerticle(vertx: Vertx): Future<String> {
         return vertx.deployVerticle(MigrationWorkerVerticle::class.java, MigrationWorkerVerticle.deploymentOptions)
+    }
+
+    private fun deployWorkerVerticles(vertx: Vertx): Future<String> {
+        return vertx.deployVerticle(RoomEventsWorkerVerticle::class.java, RoomEventsWorkerVerticle.deploymentOptions)
     }
 }

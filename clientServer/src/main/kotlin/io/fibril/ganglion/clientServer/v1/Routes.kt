@@ -8,9 +8,7 @@ import io.fibril.ganglion.clientServer.v1.authentication.AuthServiceImpl
 import io.fibril.ganglion.clientServer.v1.media.MediaController
 import io.fibril.ganglion.clientServer.v1.media.MediaService
 import io.fibril.ganglion.clientServer.v1.media.MediaServiceImpl
-import io.fibril.ganglion.clientServer.v1.rooms.RoomController
-import io.fibril.ganglion.clientServer.v1.rooms.RoomService
-import io.fibril.ganglion.clientServer.v1.rooms.RoomServiceImpl
+import io.fibril.ganglion.clientServer.v1.rooms.*
 import io.fibril.ganglion.clientServer.v1.users.*
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
@@ -44,6 +42,13 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
         val roomControllerRouter =
             RoomController(vertx, servicesMap[RoomServiceImpl.IDENTIFIER] as RoomService).mountSubRoutes()
 
+        // ROOM ALIAS
+        val roomAliasControllerRouter =
+            RoomAliasController(
+                vertx,
+                servicesMap[RoomAliasServiceImpl.IDENTIFIER] as RoomAliasService
+            ).mountSubRoutes()
+
 
 
         router.route(PATH_PREFIX).subRouter(usersRouter)
@@ -54,6 +59,8 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
         router.route(PATH_PREFIX).subRouter(authControllerRouter)
 
         router.route(PATH_PREFIX).subRouter(roomControllerRouter)
+
+        router.route(PATH_PREFIX).subRouter(roomAliasControllerRouter)
 
     }
 

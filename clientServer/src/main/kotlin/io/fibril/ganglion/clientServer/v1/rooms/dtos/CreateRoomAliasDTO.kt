@@ -19,7 +19,7 @@ data class CreateRoomAliasDTO @Inject constructor(
         get() = JsonSchema.of(
             Schemas.objectSchema()
                 .requiredProperty(
-                    "room_id", RoomId.RoomIdStringSchema
+                    "room_id", RoomId.createRoomIdStringSchema()
                 )
                 .requiredProperty("alias", Schemas.stringSchema())
                 .optionalProperty("servers", Schemas.arraySchema().with(Keywords.uniqueItems()))

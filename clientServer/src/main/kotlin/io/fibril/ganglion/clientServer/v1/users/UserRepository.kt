@@ -146,7 +146,7 @@ class UserRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         }
     }
 
-    override suspend fun update(dto: DTO): User? {
+    override suspend fun update(id: String, dto: DTO): User? {
         TODO("Not yet implemented")
     }
 

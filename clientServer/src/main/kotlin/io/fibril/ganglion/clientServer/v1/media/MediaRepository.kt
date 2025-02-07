@@ -24,7 +24,7 @@ class MediaRepositoryImpl @Inject constructor(private val database: PGDatabase) 
         TODO("Not yet implemented")
     }
 
-    override suspend fun update(dto: DTO): Media? {
+    override suspend fun update(id: String, dto: DTO): Media? {
         TODO("Not yet implemented")
     }
 

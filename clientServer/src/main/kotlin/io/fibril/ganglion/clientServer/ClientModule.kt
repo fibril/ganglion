@@ -22,11 +22,10 @@ import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventServiceImpl
 import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEvent
 import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEventModel
-import io.fibril.ganglion.clientServer.v1.rooms.RoomRepository
-import io.fibril.ganglion.clientServer.v1.rooms.RoomRepositoryImpl
-import io.fibril.ganglion.clientServer.v1.rooms.RoomService
-import io.fibril.ganglion.clientServer.v1.rooms.RoomServiceImpl
+import io.fibril.ganglion.clientServer.v1.rooms.*
 import io.fibril.ganglion.clientServer.v1.rooms.models.Room
+import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
+import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAliasModel
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomModel
 import io.fibril.ganglion.clientServer.v1.users.*
 import io.fibril.ganglion.clientServer.v1.users.models.User
@@ -70,6 +69,11 @@ class ClientModule(val vertx: Vertx) : AbstractModule() {
         bind(RoomModel::class.java).to(Room::class.java)
         bind(RoomService::class.java).to(RoomServiceImpl::class.java)
         bind(RoomRepository::class.java).to(RoomRepositoryImpl::class.java)
+
+        // Room Alias
+        bind(RoomAliasModel::class.java).to(RoomAlias::class.java)
+        bind(RoomAliasService::class.java).to(RoomAliasServiceImpl::class.java)
+        bind(RoomAliasRepository::class.java).to(RoomAliasRepositoryImpl::class.java)
 
         // RoomEvents
         bind(RoomEventModel::class.java).to(RoomEvent::class.java)

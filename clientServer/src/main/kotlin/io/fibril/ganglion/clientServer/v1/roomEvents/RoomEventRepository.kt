@@ -5,6 +5,7 @@ import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Repository
 import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
 import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.CreateRoomEventDTO
+import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.UpdateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEvent
 import io.fibril.ganglion.clientServer.v1.rooms.RoomRepositoryImpl
 import io.fibril.ganglion.storage.impl.PGDatabase
@@ -19,10 +20,13 @@ import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.future.await
 
 
-interface RoomEventRepository : Repository<RoomEvent>
+interface RoomEventRepository : Repository<RoomEvent> {
+    suspend fun fetchEvents(conditionsMap: Map<String, String>): List<RoomEvent>
+}
 
 
 class RoomEventRepositoryImpl @Inject constructor(private val database: PGDatabase) : RoomEventRepository {
+
     override suspend fun save(dto: DTO): RoomEvent {
         val params = dto.params()
 
@@ -96,17 +100,140 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
         TODO("Not yet implemented")
     }
 
-    override suspend fun update(dto: DTO): RoomEvent? {
-        TODO("Not yet implemented")
+    override suspend fun update(id: String, dto: DTO): RoomEvent? {
+        val client = database.client()
+        val result: Promise<RoomEvent> = Promise.promise()
+        var error: PgException? = null
+
+        val updateRoomEventDTO = (dto as UpdateRoomEventDTO)
+
+        val params = updateRoomEventDTO.params()
+        val keys = params.map.keys
+        val values = mutableListOf<Any>().apply {
+            for (key in keys) {
+                add("$key = '${params.getValue(key)}'")
+            }
+        }
+
+        val queryString = """
+                UPDATE room_events SET ${values.joinToString(", ")}
+                WHERE id = '$id' 
+                RETURNING *;
+            """.trimIndent()
+
+        client.query(
+            queryString
+        ).execute()
+            .onSuccess { res ->
+                result.complete(RoomEvent(res.first().toJson()))
+            }
+            .onFailure { err ->
+                error = PgException(
+                    err.message,
+                    "SEVERE",
+                    "500",
+                    err.message
+                )
+                result.fail(err)
+            }
+            .eventually { _ -> client.close() }
+
+        val roomEvent = result.future().toCompletionStage().await()
+        println("roomEVENT $roomEvent")
+
+        if (roomEvent == null && error != null) {
+            throw error!!
+        }
+
+        return roomEvent
     }
 
-    override suspend fun delete(id: String): RoomEvent? {
-        TODO("Not yet implemented")
+    override suspend fun delete(id: String): RoomEvent {
+        val client = database.client()
+        val result: Promise<JsonObject?> = Promise.promise()
+        var error: PgException? = null
+
+        client.preparedQuery(DELETE_ROOM_EVENT_QUERY).execute(Tuple.of(id))
+            .onSuccess { res ->
+                run {
+                    try {
+                        result.complete(res.first().toJson())
+                    } catch (e: NoSuchElementException) {
+                        error = PgException(
+                            e.message,
+                            "SEVERE",
+                            "500",
+                            e.message
+                        )
+                        result.fail(e)
+                    }
+                }
+            }
+            .onFailure { err ->
+                run {
+                    error = PgException(
+                        err.message,
+                        "SEVERE",
+                        "500",
+                        err.message
+                    )
+                    result.fail(error);
+                }
+            }
+
+        val resPayload = result.future().toCompletionStage().await()
+
+        if (resPayload == null && error != null) {
+            throw error!!
+        }
+
+        return RoomEvent(resPayload!!)
+    }
+
+    override suspend fun fetchEvents(conditionsMap: Map<String, String>): List<RoomEvent> {
+        val client = database.client()
+        val result: Promise<List<RoomEvent>> = Promise.promise()
+        var error: PgException? = null
+
+        val valuesQuery = mutableListOf<Any>().apply {
+            for (key in conditionsMap.keys) {
+                add("$key = '${conditionsMap[key]}'")
+            }
+        }.joinToString(" AND ")
+
+        client.query(
+            """
+                SELECT * FROM room_events WHERE $valuesQuery;
+            """.trimIndent()
+        ).execute()
+            .onSuccess { res ->
+                println("res $res")
+                result.complete(res.toList().map { RoomEvent(it.toJson()) })
+            }
+            .onFailure { err ->
+                println("err $err")
+                error = PgException(
+                    err.message,
+                    "SEVERE",
+                    "500",
+                    err.message
+                )
+            }
+            .eventually { _ -> client.close() }
+
+        val list = result.future().toCompletionStage().await()
+
+        if (list == null && error != null) {
+            throw error!!
+        }
+
+        return list
     }
 
 
     companion object {
         val CREATE_ROOM_EVENT_QUERY = ResourceBundleConstants.roomEventQueries.getString("createRoomEvent")
+        val DELETE_ROOM_EVENT_QUERY = ResourceBundleConstants.roomEventQueries.getString("deleteRoomEvent")
     }
 
 

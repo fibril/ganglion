@@ -9,7 +9,7 @@ data class RoomId @Inject constructor(private val id: String) {
 
     companion object {
         val RoomIdStringRegex = Regex("""^![a-zA-Z0-9_\-=./]+:[a-zA-Z0-9\-._~]+$""")
-        val RoomIdStringSchema: StringSchemaBuilder = Schemas.stringSchema()
+        fun createRoomIdStringSchema(): StringSchemaBuilder = Schemas.stringSchema()
             .with(Keywords.pattern(RoomIdStringRegex.toPattern()))
             .with(Keywords.minLength(5))
             .with(Keywords.maxLength(510))

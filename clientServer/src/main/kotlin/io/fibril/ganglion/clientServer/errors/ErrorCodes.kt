@@ -73,7 +73,8 @@ enum class ErrorCodes {
 
     M_CANNOT_LEAVE_SERVER_NOTICE_ROOM, // The user is unable to reject an invite to join the server notices room. See the Server Notices module for more information.
 
-    M_THREEPID_MEDIUM_NOT_SUPPORTED  // The homeserver does not support adding a third party identifier of the given medium.
+    M_THREEPID_MEDIUM_NOT_SUPPORTED,  // The homeserver does not support adding a third party identifier of the given medium.
 
+    M_ALIAS_IN_USE
 }
 

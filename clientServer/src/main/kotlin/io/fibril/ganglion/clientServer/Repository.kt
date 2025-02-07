@@ -15,7 +15,7 @@ interface Repository<T> {
 
 
     @Throws(DatabaseException::class)
-    suspend fun update(dto: DTO): T?
+    suspend fun update(id: String, dto: DTO): T?
 
     @Throws(DatabaseException::class)
     suspend fun delete(id: String): T?

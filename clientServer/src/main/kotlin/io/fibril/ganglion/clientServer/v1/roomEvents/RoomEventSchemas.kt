@@ -11,7 +11,7 @@ object RoomEventSchemas {
         .optionalProperty("sender", MatrixUserId.createMatrixUserIdStringSchema())
         .requiredProperty("type", Schemas.stringSchema())
         .optionalProperty("state_key", Schemas.stringSchema())
-        .optionalProperty("room_id", RoomId.RoomIdStringSchema)
+        .optionalProperty("room_id", RoomId.createRoomIdStringSchema())
 
 
     object ContentSchemas {

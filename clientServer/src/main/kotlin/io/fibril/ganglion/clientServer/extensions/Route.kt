@@ -33,8 +33,8 @@ fun <T : DTO> Route.useDTOValidation(
     clazz: Class<T>
 ): Route {
     this.handler { routingContext ->
-        val params = routingContext.body()
-            .asJsonObject() ?: JsonObject().mergeIn(JsonObject.mapFrom(routingContext.pathParams()))
+        val params = (routingContext.body().asJsonObject() ?: JsonObject())
+            .mergeIn(JsonObject.mapFrom(routingContext.pathParams()))
         val sender = null
         val dto = clazz.constructors[0].newInstance(params, sender) as DTO
         val validationResult = dto.validate()

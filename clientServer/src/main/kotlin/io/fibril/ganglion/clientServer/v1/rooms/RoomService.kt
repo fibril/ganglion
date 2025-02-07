@@ -9,14 +9,12 @@ import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
 import io.fibril.ganglion.clientServer.utils.Utils
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventNames
-import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventRepository
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventUtils
 import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.CreateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEvent
-import io.fibril.ganglion.clientServer.v1.rooms.dtos.CreateRoomAliasDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.CreateRoomDTO
 import io.fibril.ganglion.clientServer.v1.rooms.models.Room
-import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAliasId
 import io.vertx.core.Future
 import io.vertx.core.json.JsonArray
@@ -27,14 +25,13 @@ import kotlinx.coroutines.future.await
 
 
 interface RoomService : Service<Room> {
-    suspend fun createRoomAlias(createRoomAliasDTO: CreateRoomAliasDTO): Future<RoomAlias?>
     suspend fun createRoomEventsBatch(createEventDTOs: List<CreateRoomEventDTO>): Future<List<RoomEvent>>
     suspend fun createRoomEvent(createRoomEventDTO: CreateRoomEventDTO): Future<RoomEvent?>
 }
 
 class RoomServiceImpl @Inject constructor(
     private val roomRepository: RoomRepository,
-    private val roomEventRepository: RoomEventRepository
+    private val roomEventService: RoomEventService
 ) : RoomService {
 
     companion object {
@@ -442,17 +439,11 @@ class RoomServiceImpl @Inject constructor(
         return Future.succeededFuture(deletedRoom != null)
     }
 
-    override suspend fun createRoomAlias(createRoomAliasDTO: CreateRoomAliasDTO): Future<RoomAlias?> {
-        val roomAlias = roomRepository.createRoomAlias(createRoomAliasDTO)
-        return Future.succeededFuture(roomAlias)
-    }
-
-
     // EVENTS
 
     override suspend fun createRoomEvent(createRoomEventDTO: CreateRoomEventDTO): Future<RoomEvent?> {
         val roomEvent = try {
-            roomEventRepository.save(createRoomEventDTO)
+            roomEventService.create(createRoomEventDTO).toCompletionStage().await()
         } catch (e: Exception) {
             return Future.failedFuture(e)
         }

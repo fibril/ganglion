@@ -80,7 +80,7 @@ class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 
-    override suspend fun update(dto: DTO): Any? {
+    override suspend fun update(id: String, dto: DTO): Any? {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 

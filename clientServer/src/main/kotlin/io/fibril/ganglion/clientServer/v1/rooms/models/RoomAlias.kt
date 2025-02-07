@@ -7,7 +7,7 @@ import io.vertx.core.json.JsonObject
 interface RoomAliasModel : Model
 
 data class RoomAlias @Inject constructor(val id: String, val fullJsonObject: JsonObject? = null) : RoomAliasModel {
-    internal constructor(json: JsonObject) : this(json.getString("id"), json)
+    constructor(json: JsonObject) : this(json.getString("id"), json)
 
     override fun asJson() = JsonObject().put("id", id).mergeIn(fullJsonObject ?: JsonObject())
 }
