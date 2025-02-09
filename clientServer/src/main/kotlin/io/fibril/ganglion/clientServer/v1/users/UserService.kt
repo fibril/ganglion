@@ -8,6 +8,7 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.v1.authentication.models.AuthDatabaseActions
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.fibril.ganglion.clientServer.v1.users.models.User
 import io.vertx.core.Future
@@ -70,13 +71,15 @@ class UserServiceImpl @Inject constructor(
                         "access_token",
                         jwtAuthProvider.generateToken(
                             JsonObject().put("sub", matrixUserId.toString()),
-                            TokenType.ACCESS
+                            TokenType.ACCESS,
+                            notificationChannelName = AuthDatabaseActions.TOKEN_CREATED
                         )
                     ).put(
                         "refresh_token",
                         jwtAuthProvider.generateToken(
                             JsonObject().put("sub", matrixUserId.toString()),
-                            TokenType.REFRESH
+                            TokenType.REFRESH,
+                            notificationChannelName = AuthDatabaseActions.TOKEN_CREATED
                         )
                     )
                 )

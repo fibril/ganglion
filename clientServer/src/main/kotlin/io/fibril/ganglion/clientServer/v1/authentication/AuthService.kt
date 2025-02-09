@@ -10,6 +10,7 @@ import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.utils.Utils
 import io.fibril.ganglion.clientServer.v1.authentication.dtos.LoginDTO
+import io.fibril.ganglion.clientServer.v1.authentication.models.AuthDatabaseActions
 import io.fibril.ganglion.clientServer.v1.devices.DeviceRepository
 import io.fibril.ganglion.clientServer.v1.devices.dtos.CreateDeviceDTO
 import io.fibril.ganglion.clientServer.v1.users.UserRepository
@@ -21,6 +22,7 @@ import java.util.*
 
 interface AuthService : Service<Any> {
     suspend fun login(loginDTO: LoginDTO): Future<JsonObject>
+    suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Future<Boolean>
 }
 
 class AuthServiceImpl @Inject constructor(
@@ -103,8 +105,16 @@ class AuthServiceImpl @Inject constructor(
             )
 
             val tokenData = JsonObject.of("sub", matrixUserId.toString())
-            val accessToken = ganglionJWTAuthProvider.generateToken(tokenData, TokenType.ACCESS)
-            val refreshToken = ganglionJWTAuthProvider.generateToken(tokenData, TokenType.REFRESH)
+            val accessToken = ganglionJWTAuthProvider.generateToken(
+                tokenData,
+                TokenType.ACCESS,
+                notificationChannelName = AuthDatabaseActions.TOKEN_CREATED
+            )
+            val refreshToken = ganglionJWTAuthProvider.generateToken(
+                tokenData,
+                TokenType.REFRESH,
+                notificationChannelName = AuthDatabaseActions.TOKEN_CREATED
+            )
 
             return Future.succeededFuture(
                 JsonObject()
@@ -123,6 +133,11 @@ class AuthServiceImpl @Inject constructor(
             )
         )
 
+    }
+
+    override suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Future<Boolean> {
+        val saved = authRepository.saveGeneratedToken(token, tokenType, userId)
+        return Future.succeededFuture(saved)
     }
 
     override val identifier = IDENTIFIER

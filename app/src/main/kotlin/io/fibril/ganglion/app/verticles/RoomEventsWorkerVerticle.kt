@@ -85,20 +85,7 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
                 )
             )
         )
-
-        try {
-            roomEventRepository.update(
-                roomCanonicalAliasEvent.id,
-                UpdateRoomEventDTO(
-                    json = canonicalAliasEventContent,
-                    roomEventName = RoomEventNames.StateEvents.CANONICAL_ALIAS,
-                    sender = null
-                )
-            )
-            return Future.succeededFuture()
-        } catch (e: Exception) {
-            return Future.failedFuture(e)
-        }
+        return updateCanonicalAliasContent(roomCanonicalAliasEvent.id, canonicalAliasEventContent)
     }
 
     private suspend fun roomAliasUpdated(message: Message<JsonObject>): Future<Void> {
@@ -123,21 +110,7 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
                 )
             )
         )
-
-        try {
-            roomEventRepository.update(
-                roomCanonicalAliasEvent.id,
-                UpdateRoomEventDTO(
-                    json = canonicalAliasEventContent,
-                    roomEventName = RoomEventNames.StateEvents.CANONICAL_ALIAS,
-                    sender = null
-                )
-            )
-            return Future.succeededFuture()
-        } catch (e: Exception) {
-            println(e)
-            return Future.failedFuture(e)
-        }
+        return updateCanonicalAliasContent(roomCanonicalAliasEvent.id, canonicalAliasEventContent)
     }
 
     private suspend fun roomAliasDeleted(message: Message<JsonObject>): Future<Void> {
@@ -161,7 +134,6 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
         }
 
         val altAliases = roomCanonicalAliasEventContent.getJsonArray("alt_aliases") ?: JsonArray()
-        println("altAliases $altAliases")
         val canonicalAliasEventContent = JsonObject.of(
             "content",
             roomCanonicalAliasEventContent.copy().put(
@@ -171,19 +143,7 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
             )
         )
 
-        try {
-            roomEventRepository.update(
-                roomCanonicalAliasEvent.id,
-                UpdateRoomEventDTO(
-                    json = canonicalAliasEventContent,
-                    roomEventName = RoomEventNames.StateEvents.CANONICAL_ALIAS,
-                    sender = null
-                )
-            )
-            return Future.succeededFuture()
-        } catch (e: Exception) {
-            return Future.failedFuture(e)
-        }
+        return updateCanonicalAliasContent(roomCanonicalAliasEvent.id, canonicalAliasEventContent)
     }
 
     private suspend fun getCanonicalAliasEvent(roomId: String): RoomEvent? {
@@ -194,6 +154,31 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
             )
         )?.first()
 
+    }
+
+    private suspend fun updateCanonicalAliasContent(
+        canonicalAliasId: String,
+        canonicalAliasEventContent: JsonObject
+    ): Future<Void> {
+        val dto = UpdateRoomEventDTO(
+            json = canonicalAliasEventContent,
+            roomEventName = RoomEventNames.StateEvents.CANONICAL_ALIAS,
+            sender = null
+        )
+
+        if (dto.validate().valid) {
+            try {
+                roomEventRepository.update(
+                    canonicalAliasId,
+                    dto
+                )
+                return Future.succeededFuture()
+            } catch (e: Exception) {
+                return Future.failedFuture(e)
+            }
+        } else {
+            return Future.failedFuture(Exception("Invalid UpdateRoomEventDTO"))
+        }
     }
 
     companion object {

@@ -17,7 +17,7 @@ enum class TokenType {
 
 interface GanglionJWTAuthProvider {
     val provider: JWTAuth
-    fun generateToken(tokenData: JsonObject, tokenType: TokenType): String
+    fun generateToken(tokenData: JsonObject, tokenType: TokenType, notificationChannelName: String? = null): String
 }
 
 class GanglionJWTAuthProviderImpl @Inject constructor(private val vertx: Vertx) : GanglionJWTAuthProvider {
@@ -59,11 +59,11 @@ class GanglionJWTAuthProviderImpl @Inject constructor(private val vertx: Vertx) 
                 )
         )
 
-    override fun generateToken(tokenData: JsonObject, tokenType: TokenType): String {
+    override fun generateToken(tokenData: JsonObject, tokenType: TokenType, notificationChannelName: String?): String {
         val defaultTokenData = if (tokenType == TokenType.ACCESS) defaultAccessTokenData else defaultRefreshTokenData
         val tokenDataObject = defaultTokenData.copy().mergeIn(tokenData)
         val token = provider.generateToken(tokenDataObject, JWTOptions().setAlgorithm(ALGORITHM))
-        notifyTokenGenerated(tokenDataObject, token)
+        notifyTokenGenerated(tokenDataObject, token, notificationChannelName)
         return token
     }
 
@@ -71,13 +71,12 @@ class GanglionJWTAuthProviderImpl @Inject constructor(private val vertx: Vertx) 
         provider.authenticate(TokenCredentials(bearerToken.substringAfter("Bearer ")))
 
 
-    fun generateToken() = generateToken(JsonObject(), TokenType.ACCESS)
-
     /**
-     * Notify any listening worker verticle about the token.
+     * Notify any listening worker verticle about the generated token.
      * Said worker verticle should save it to the database
      */
-    private fun notifyTokenGenerated(tokenDataObject: JsonObject, token: String) {
-        // TODO:
+    private fun notifyTokenGenerated(tokenDataObject: JsonObject, token: String, channel: String?) {
+        if (channel != null)
+            vertx.eventBus().send(channel, tokenDataObject.put("token", token))
     }
 }

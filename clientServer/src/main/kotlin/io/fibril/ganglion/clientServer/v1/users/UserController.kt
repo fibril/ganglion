@@ -37,7 +37,8 @@ internal class UserController @Inject constructor(vertx: Vertx, val userService:
                 userService.create(registerUserDTO)
                     .onSuccess { user ->
                         routingContext.end(
-                            user.asJson().only(PERMITTED_CREATE_USER_SUCCESS_RESPONSE_PARAMS).toString()
+                            user.asJson()
+                                .only(*PERMITTED_CREATE_USER_SUCCESS_RESPONSE_PARAMS).toString()
                         )
                     }
                     .onFailure {
@@ -59,7 +60,7 @@ internal class UserController @Inject constructor(vertx: Vertx, val userService:
         const val USER_DIRECTORY_SEARCH_PATH = "/v3/user_directory/search"
         const val REGISTER_PATH = "/v3/register"
 
-        val PERMITTED_CREATE_USER_SUCCESS_RESPONSE_PARAMS = setOf(
+        val PERMITTED_CREATE_USER_SUCCESS_RESPONSE_PARAMS = arrayOf(
             "access_token",
             "device_id",
             "expires_in_ms",

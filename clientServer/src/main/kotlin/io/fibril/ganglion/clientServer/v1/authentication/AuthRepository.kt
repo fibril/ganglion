@@ -17,6 +17,7 @@ interface AuthRepository : Repository<Any> {
     suspend fun savePasswordForUser(matrixUserId: MatrixUserId, password: String): JsonObject?
     suspend fun retrievePasswordForUser(matrixUserId: MatrixUserId): Password?
     suspend fun findPassword(id: String): Password?
+    suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Boolean
 }
 
 class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) : AuthRepository {
@@ -25,6 +26,7 @@ class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         val passwordHash: String = BCrypt.hashpw(password, BCrypt.gensalt());
         val queryResult =
             client.preparedQuery(SAVE_PASSWORD_QUERY).execute(Tuple.of(matrixUserId.toString(), passwordHash))
+                .eventually { _ -> client.close() }
                 .toCompletionStage().asDeferred()
 
         val rowSet = queryResult.await()
@@ -33,8 +35,6 @@ class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) :
             return rowSet.first().toJson()
         } catch (e: NoSuchElementException) {
             null
-        } finally {
-            client.close()
         }
     }
 
@@ -42,29 +42,40 @@ class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         val client = database.client()
         val queryResult =
             client.preparedQuery(FETCH_PASSWORD_FOR_USER_QUERY).execute(Tuple.of(matrixUserId.toString()))
+                .eventually { _ -> client.close() }
                 .toCompletionStage().asDeferred()
         val rowSet = queryResult.await()
         return try {
             return Password(rowSet.first().toJson())
         } catch (e: NoSuchElementException) {
             null
-        } finally {
-            client.close()
         }
     }
 
     override suspend fun findPassword(id: String): Password? {
         val client = database.client()
         val queryResult =
-            client.preparedQuery(FIND_PASSWORD_BY_ID_QUERY).execute(Tuple.of(id))
+            client.preparedQuery(FIND_PASSWORD_BY_ID_QUERY).execute(Tuple.of(id)).eventually { _ -> client.close() }
                 .toCompletionStage().asDeferred()
         val rowSet = queryResult.await()
         return try {
             return Password(rowSet.first().toJson())
         } catch (e: NoSuchElementException) {
             null
-        } finally {
-            client.close()
+        }
+    }
+
+    override suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Boolean {
+        val client = database.client()
+        val queryResult =
+            client.preparedQuery(SAVE_GENERATED_TOKEN_QUERY).execute(Tuple.of(token, tokenType, userId.toString()))
+                .eventually { _ -> client.close() }
+                .toCompletionStage().asDeferred()
+        val rowSet = queryResult.await()
+        return try {
+            rowSet.first().toJson() != null
+        } catch (e: NoSuchElementException) {
+            false
         }
     }
 
@@ -92,5 +103,6 @@ class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         val SAVE_PASSWORD_QUERY = ResourceBundleConstants.authQueries.getString("savePassword")
         val FETCH_PASSWORD_FOR_USER_QUERY = ResourceBundleConstants.authQueries.getString("fetchPasswordForUser")
         val FIND_PASSWORD_BY_ID_QUERY = ResourceBundleConstants.authQueries.getString("findPasswordById")
+        val SAVE_GENERATED_TOKEN_QUERY = ResourceBundleConstants.authQueries.getString("saveGeneratedToken")
     }
 }

@@ -1,6 +1,7 @@
 package io.fibril.ganglion.app
 
 import com.google.inject.Guice
+import io.fibril.ganglion.app.verticles.AuthWorkerVerticle
 import io.fibril.ganglion.app.verticles.MigrationWorkerVerticle
 import io.fibril.ganglion.app.verticles.RoomEventsWorkerVerticle
 import io.fibril.ganglion.clientServer.ClientModule
@@ -86,5 +87,8 @@ class MainVerticle : CoroutineVerticle() {
 
     private fun deployWorkerVerticles(vertx: Vertx): Future<String> {
         return vertx.deployVerticle(RoomEventsWorkerVerticle::class.java, RoomEventsWorkerVerticle.deploymentOptions)
+            .andThen {
+                vertx.deployVerticle(AuthWorkerVerticle::class.java, AuthWorkerVerticle.deploymentOptions)
+            }
     }
 }

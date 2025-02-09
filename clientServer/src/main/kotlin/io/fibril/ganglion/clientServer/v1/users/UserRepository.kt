@@ -76,7 +76,7 @@ class UserRepositoryImpl @Inject constructor(private val database: PGDatabase) :
                                                 .apply {
                                                     put("device_id", this.getValue("id"))
                                                 }
-                                                .exclude(setOf("id")) //exclude device.id
+                                                .exclude("id") //exclude device.id
                                         ).asJson()
                                     result.complete(obj)
                                     txResponse

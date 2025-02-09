@@ -2,8 +2,9 @@ package io.fibril.ganglion.clientServer.v1.users
 
 import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.Controller
-import io.fibril.ganglion.clientServer.DTO
+import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.extensions.only
+import io.fibril.ganglion.clientServer.extensions.useDTOValidation
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
 import io.fibril.ganglion.clientServer.v1.users.dtos.GetUserProfileDTO
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
@@ -16,6 +17,7 @@ internal class UserProfileController @Inject constructor(vertx: Vertx, val userP
     override fun mountSubRoutes(): Router {
 
         router.get(USER_PROFILE_PATH)
+            .useDTOValidation(GetUserProfileDTO::class.java)
             .handler(::getUserProfileByUserId)
 
         router.get(USER_AVATAR_URL_PATH).handler(::getUserAvatarUrl)
@@ -26,24 +28,25 @@ internal class UserProfileController @Inject constructor(vertx: Vertx, val userP
     }
 
     private fun getUserProfileByUserId(context: RoutingContext) {
-        val getUserProfileDTO = GetUserProfileDTO(context)
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val uid = context.pathParam("userId")
+            val matrixUserId = MatrixUserId(uid)
+            userProfileService.findOneByUserId(matrixUserId)
+                .onSuccess { userProfile ->
+                    context.end(
+                        userProfile.asJson().only(
+                            "display_name",
+                            "displayname",
+                            "avatar_url"
+                        ).toString()
+                    )
+                }.onFailure {
+                    val err = it as RequestException
+                    context.response().setStatusCode(err.statusCode)
+                    context.end(err.json.toString())
 
-        DTO.Helpers.useDTOValidation(
-            dto = getUserProfileDTO,
-            context
-        ) {
-            CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
-                val uid = context.pathParam("userId")
-                val matrixUserId = MatrixUserId(uid)
-                val userProfile = userProfileService.findOneByUserId(matrixUserId)
-                context.end(
-                    userProfile?.asJson()?.only(setOf()).toString()
-                )
-
-            }
+                }
         }
-
-
     }
 
     private fun getUserAvatarUrl(context: RoutingContext) {

@@ -1,16 +1,20 @@
 package io.fibril.ganglion.clientServer.v1.users
 
+import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Service
-import com.google.inject.Inject
-import io.vertx.core.Future
-import kotlinx.coroutines.future.asDeferred
+import io.fibril.ganglion.clientServer.errors.ErrorCodes
+import io.fibril.ganglion.clientServer.errors.RequestException
+import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.fibril.ganglion.clientServer.v1.users.models.UserProfile
+import io.vertx.core.Future
+import io.vertx.pgclient.PgException
 
 
 interface UserProfileService : Service<UserProfile> {
-    suspend fun findOneByUserId(userId: MatrixUserId): UserProfile?
+    suspend fun findOneByUserId(userId: MatrixUserId): Future<UserProfile>
+
 }
 
 class UserProfileServiceImpl @Inject constructor(
@@ -32,16 +36,22 @@ class UserProfileServiceImpl @Inject constructor(
         TODO()
     }
 
-    override suspend fun findOneByUserId(userId: MatrixUserId): UserProfile? {
-        val userDeferred = userServiceImpl.findOne(userId.toString()).toCompletionStage().asDeferred()
-        val user = userDeferred.await()
-        if (user != null) {
-            val userProfileId = user.asJson().getString("user_profile_id")
-            return if (userProfileId != null)
-                findOne(userProfileId).toCompletionStage().asDeferred().await()
-            else null
+    override suspend fun findOneByUserId(userId: MatrixUserId): Future<UserProfile> {
+        val userProfile = try {
+            repository.findByUserId(userId.toString())
+        } catch (e: PgException) {
+            return Future.failedFuture(
+                RequestException(
+                    500,
+                    e.message ?: "Unknown Exception",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                )
+            )
         }
-        return null
+
+        println("userProfile ${userProfile!!.asJson()}")
+
+        return Future.succeededFuture(userProfile)
     }
 
     override suspend fun update(id: String, updateUserDTO: DTO): Future<UserProfile> {

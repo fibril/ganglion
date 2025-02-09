@@ -40,7 +40,7 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
                         room.asJson().apply {
                             put("room_id", getString("id"))
                         }
-                            .only(setOf("room_id")).toString())
+                            .only("room_id").toString())
                 }
                 .onFailure {
                     val err = it as RequestException

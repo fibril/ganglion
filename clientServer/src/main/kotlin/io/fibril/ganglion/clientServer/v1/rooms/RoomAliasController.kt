@@ -7,11 +7,13 @@ import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.extensions.addRequestRateLimiter
 import io.fibril.ganglion.clientServer.extensions.authenticatedRouteForUser
-import io.fibril.ganglion.clientServer.extensions.only
 import io.fibril.ganglion.clientServer.extensions.useDTOValidation
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
 import io.fibril.ganglion.clientServer.utils.rateLimiters.RoomRequestRateLimiter
-import io.fibril.ganglion.clientServer.v1.rooms.dtos.*
+import io.fibril.ganglion.clientServer.v1.rooms.dtos.DeleteRoomAliasDTO
+import io.fibril.ganglion.clientServer.v1.rooms.dtos.GetAliasesDTO
+import io.fibril.ganglion.clientServer.v1.rooms.dtos.GetRoomAliasDTO
+import io.fibril.ganglion.clientServer.v1.rooms.dtos.PutRoomAliasDTO
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -48,26 +50,6 @@ internal class RoomAliasController @Inject constructor(
             .handler(::deleteRoomAlias)
 
         return router
-    }
-
-    private fun createRoom(routingContext: RoutingContext) {
-        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
-            val createRoomDTO =
-                CreateRoomDTO(routingContext.body()?.asJsonObject() ?: JsonObject(), sender = routingContext.user())
-            roomAliasService.create(createRoomDTO)
-                .onSuccess { room ->
-                    routingContext.end(
-                        room.asJson().apply {
-                            put("room_id", getString("id"))
-                        }
-                            .only(setOf("room_id")).toString())
-                }
-                .onFailure {
-                    val err = it as RequestException
-                    routingContext.response().setStatusCode(err.statusCode)
-                    routingContext.end(err.json.toString())
-                }
-        }
     }
 
     private fun getRoomAlias(routingContext: RoutingContext) {
@@ -173,7 +155,6 @@ internal class RoomAliasController @Inject constructor(
     }
 
     companion object {
-        const val CREATE_ROOM_PATH = "/v3/createRoom"
         const val GET_ROOM_ALIAS_PATH = "/v3/directory/room/:roomAlias"
         const val GET_ALIASES_PATH = "/v3/rooms/:roomId/aliases"
         const val PUT_ROOM_ALIAS_PATH = "/v3/directory/room/:roomAlias"

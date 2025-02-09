@@ -2,7 +2,7 @@ package io.fibril.ganglion.clientServer.extensions
 
 import io.vertx.core.json.JsonObject
 
-fun JsonObject.only(keys: Set<String>): JsonObject {
+fun JsonObject.only(vararg keys: String): JsonObject {
     return JsonObject().also {
         for (field in keys) {
             it.put(field, this.getValue(field))
@@ -10,7 +10,7 @@ fun JsonObject.only(keys: Set<String>): JsonObject {
     }
 }
 
-fun JsonObject.exclude(keys: Set<String>): JsonObject {
+fun JsonObject.exclude(vararg keys: String): JsonObject {
     val currentJsonObject = this.copy()
     if (keys.isNotEmpty()) {
         return currentJsonObject.also {
