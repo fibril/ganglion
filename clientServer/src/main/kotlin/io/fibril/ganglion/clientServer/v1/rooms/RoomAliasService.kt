@@ -6,6 +6,7 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventDatabaseActions
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventNames
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.DeleteRoomAliasDTO
@@ -13,7 +14,6 @@ import io.fibril.ganglion.clientServer.v1.rooms.dtos.GetAliasesDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.GetRoomAliasDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.PutRoomAliasDTO
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
-import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAliasDatabaseActions
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -68,7 +68,7 @@ class RoomAliasServiceImpl @Inject constructor(
                 )
             )
         }
-        vertx.eventBus().send(RoomAliasDatabaseActions.ROOM_ALIAS_CREATED, roomAlias!!.asJson())
+        vertx.eventBus().send(RoomEventDatabaseActions.ROOM_ALIAS_CREATED, roomAlias!!.asJson())
         return Future.succeededFuture(roomAlias)
     }
 
@@ -191,7 +191,7 @@ class RoomAliasServiceImpl @Inject constructor(
             )
         }
 
-        vertx.eventBus().send(RoomAliasDatabaseActions.ROOM_ALIAS_UPDATED, roomAlias!!.asJson())
+        vertx.eventBus().send(RoomEventDatabaseActions.ROOM_ALIAS_UPDATED, roomAlias!!.asJson())
 
         return Future.succeededFuture(roomAlias)
     }
@@ -221,7 +221,7 @@ class RoomAliasServiceImpl @Inject constructor(
             )
         }
 
-        vertx.eventBus().send(RoomAliasDatabaseActions.ROOM_ALIAS_DELETED, deletedRoomAlias.asJson())
+        vertx.eventBus().send(RoomEventDatabaseActions.ROOM_ALIAS_DELETED, deletedRoomAlias.asJson())
 
         return Future.succeededFuture(deletedRoomAlias)
     }

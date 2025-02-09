@@ -2,14 +2,16 @@ package io.fibril.ganglion.app.verticles
 
 import com.google.inject.Guice
 import io.fibril.ganglion.clientServer.ClientModule
+import io.fibril.ganglion.clientServer.extensions.only
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventDatabaseActions
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventNames
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventRepository
 import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.UpdateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEvent
 import io.fibril.ganglion.clientServer.v1.rooms.RoomAliasRepository
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
-import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAliasDatabaseActions
+import io.fibril.ganglion.clientServer.v1.users.UserProfileRepository
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Future
 import io.vertx.core.ThreadingModel
@@ -21,15 +23,17 @@ import io.vertx.kotlin.coroutines.CoroutineVerticle
 class RoomEventsWorkerVerticle : CoroutineVerticle() {
     private lateinit var roomAliasRepository: RoomAliasRepository
     private lateinit var roomEventRepository: RoomEventRepository
+    private lateinit var userProfileRepository: UserProfileRepository
 
     override suspend fun start() {
         val injector = Guice.createInjector(ClientModule(vertx))
         roomAliasRepository = injector.getInstance(RoomAliasRepository::class.java)
         roomEventRepository = injector.getInstance(RoomEventRepository::class.java)
+        userProfileRepository = injector.getInstance(UserProfileRepository::class.java)
 
         val eventBus = vertx.eventBus()
 
-        eventBus.consumer(RoomAliasDatabaseActions.ROOM_ALIAS_CREATED) { message ->
+        eventBus.consumer(RoomEventDatabaseActions.ROOM_ALIAS_CREATED) { message ->
             CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
                 roomAliasCreated(message)
                     .onSuccess {
@@ -41,7 +45,7 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
             }
 
         }
-        eventBus.consumer(RoomAliasDatabaseActions.ROOM_ALIAS_UPDATED) { message ->
+        eventBus.consumer(RoomEventDatabaseActions.ROOM_ALIAS_UPDATED) { message ->
             CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
                 roomAliasUpdated(message)
                     .onSuccess {
@@ -52,7 +56,7 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
                     }
             }
         }
-        eventBus.consumer(RoomAliasDatabaseActions.ROOM_ALIAS_DELETED) { message ->
+        eventBus.consumer(RoomEventDatabaseActions.ROOM_ALIAS_DELETED) { message ->
             CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
                 roomAliasDeleted(message)
                     .onSuccess {
@@ -60,6 +64,19 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
                     }
                     .onFailure { e ->
                         println("roomAliasDeleted Failed from Verticle ${e.message}")
+                    }
+            }
+        }
+
+
+        eventBus.consumer(RoomEventDatabaseActions.ROOM_MEMBER_CREATED) { message ->
+            CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+                roomMemberCreated(message)
+                    .onSuccess {
+                        println("roomMemberCreated method from Verticle")
+                    }
+                    .onFailure { e ->
+                        println("roomMemberCreated Failed from Verticle ${e.message}")
                     }
             }
         }
@@ -179,6 +196,30 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
         } else {
             return Future.failedFuture(Exception("Invalid UpdateRoomEventDTO"))
         }
+    }
+
+    private suspend fun roomMemberCreated(message: Message<JsonObject>): Future<Void> {
+        val roomMemberEventJson = message.body()
+        val userId =
+            roomMemberEventJson.getString("state_key") ?: return Future.failedFuture("No userId found in payload")
+        val userProfile = try {
+            userProfileRepository.findByUserId(userId)
+        } catch (e: Exception) {
+            return Future.failedFuture(e)
+        }
+        val eventContent = JsonObject(roomMemberEventJson.getString("content"))
+        val fieldsToUpdate = userProfile!!.asJson().only("displayname", "display_name", "avatar_url")
+        val dto = UpdateRoomEventDTO(
+            json = JsonObject.of("content", eventContent.mergeIn(fieldsToUpdate)),
+            roomEventName = RoomEventNames.StateEvents.MEMBER,
+            sender = null
+        )
+        try {
+            roomEventRepository.update(roomMemberEventJson.getString("id"), dto)
+        } catch (e: Exception) {
+            return Future.failedFuture(e)
+        }
+        return Future.succeededFuture()
     }
 
     companion object {

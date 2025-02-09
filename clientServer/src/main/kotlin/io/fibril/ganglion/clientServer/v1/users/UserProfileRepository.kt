@@ -37,11 +37,9 @@ class UserProfileRepositoryImpl @Inject constructor(private val database: PGData
     override suspend fun findByUserId(userId: String): UserProfile? {
         val client = database.client()
         val result: Promise<UserProfile> = Promise.promise()
-        var error: PgException? = null
 
         client.preparedQuery(FIND_BY_USER_ID_QUERY).execute(Tuple.of(userId))
             .onSuccess { res ->
-                println("res $res")
                 val userProfile: UserProfile? = try {
                     UserProfile(res.first().toJson())
                 } catch (e: NoSuchElementException) {
@@ -52,8 +50,7 @@ class UserProfileRepositoryImpl @Inject constructor(private val database: PGData
                     result.complete(userProfile)
                 }
             }.onFailure { err ->
-                println("err $err")
-                error = PgException(
+                throw PgException(
                     err.message,
                     "SEVERE",
                     "500",
@@ -62,9 +59,6 @@ class UserProfileRepositoryImpl @Inject constructor(private val database: PGData
             }
             .eventually { _ -> client.close() }
         val profile = result.future().toCompletionStage().await()
-        if (profile == null && error != null) {
-            throw error!!
-        }
 
         return profile
     }
