@@ -5,7 +5,7 @@ import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.utils.RequestRateLimiter
 import io.fibril.ganglion.clientServer.v1.authentication.RequestAuthenticator
-import io.fibril.ganglion.clientServer.v1.authentication.UserType
+import io.fibril.ganglion.clientServer.v1.authentication.RoleType
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Route
 import io.vertx.ext.web.RoutingContext
@@ -15,16 +15,9 @@ fun Route.addRequestRateLimiter(requestRateLimiter: RequestRateLimiter): Route {
     return this
 }
 
-fun Route.authenticatedRouteForUser(): Route {
+fun Route.authenticatedRoute(minimumRoleType: RoleType): Route {
     this.handler { context ->
-        RequestAuthenticator.handleRequestAuthentication(context, UserType.USER)
-    }
-    return this
-}
-
-fun Route.authenticatedRouteForAdmin(): Route {
-    this.handler { context ->
-        RequestAuthenticator.handleRequestAuthentication(context, UserType.ADMIN)
+        RequestAuthenticator.handleRequestAuthentication(context, minimumRoleType)
     }
     return this
 }
@@ -47,6 +40,7 @@ fun <T : DTO> Route.useDTOValidation(
     return this
 
 }
+
 
 private fun defaultOnValidationFailure(context: RoutingContext, errors: JsonObject) {
     context.response().setStatusCode(400)

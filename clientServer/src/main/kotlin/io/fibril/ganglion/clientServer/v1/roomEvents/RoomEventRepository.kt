@@ -207,7 +207,6 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
             """.trimIndent()
         ).execute()
             .onSuccess { res ->
-                println("res $res")
                 result.complete(res.toList().map { RoomEvent(it.toJson()) })
             }
             .onFailure { err ->

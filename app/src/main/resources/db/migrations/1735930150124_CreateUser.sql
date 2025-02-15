@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     confirmed_at TIMESTAMP WITHOUT TIME ZONE,
     locked_at TIMESTAMP WITHOUT TIME ZONE,
-    suspended_at TIMESTAMP WITHOUT TIME ZONE
+    suspended_at TIMESTAMP WITHOUT TIME ZONE,
+    role VARCHAR NOT NULL DEFAULT 'user' CHECK (role IN('admin', 'user', 'bot', 'trusted_application', 'guest'))
 );
 
 CREATE TRIGGER update_users_updated_at

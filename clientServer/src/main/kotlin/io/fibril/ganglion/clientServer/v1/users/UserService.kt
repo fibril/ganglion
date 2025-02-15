@@ -62,22 +62,28 @@ class UserServiceImpl @Inject constructor(
                 )
             }
 
+            val userJson = user.asJson()
+
             if (params.getBoolean("inhibit_login") ?: true) {
                 return Future.succeededFuture(user)
             }
+
+            val tokenData = JsonObject().put("sub", matrixUserId.toString())
+                .put("role", userJson.getString("role"))
+
             return Future.succeededFuture(
                 User(
-                    user.asJson().put(
+                    userJson.put(
                         "access_token",
                         jwtAuthProvider.generateToken(
-                            JsonObject().put("sub", matrixUserId.toString()),
+                            tokenData,
                             TokenType.ACCESS,
                             notificationChannelName = AuthDatabaseActions.TOKEN_CREATED
                         )
                     ).put(
                         "refresh_token",
                         jwtAuthProvider.generateToken(
-                            JsonObject().put("sub", matrixUserId.toString()),
+                            tokenData,
                             TokenType.REFRESH,
                             notificationChannelName = AuthDatabaseActions.TOKEN_CREATED
                         )
@@ -100,7 +106,7 @@ class UserServiceImpl @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    override suspend fun findOne(id: String): Future<User> {
+    override suspend fun findOne(id: String): Future<User?> {
         TODO("Not yet implemented")
     }
 

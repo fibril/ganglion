@@ -104,7 +104,7 @@ class AuthServiceImpl @Inject constructor(
                 )
             )
 
-            val tokenData = JsonObject.of("sub", matrixUserId.toString())
+            val tokenData = JsonObject.of("sub", matrixUserId.toString()).put("role", user.asJson().getString("role"))
             val accessToken = ganglionJWTAuthProvider.generateToken(
                 tokenData,
                 TokenType.ACCESS,
@@ -147,7 +147,7 @@ class AuthServiceImpl @Inject constructor(
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 
-    override suspend fun findOne(id: String): Future<Any> {
+    override suspend fun findOne(id: String): Future<Any?> {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 

@@ -6,10 +6,11 @@ import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.extensions.addRequestRateLimiter
-import io.fibril.ganglion.clientServer.extensions.authenticatedRouteForUser
+import io.fibril.ganglion.clientServer.extensions.authenticatedRoute
 import io.fibril.ganglion.clientServer.extensions.useDTOValidation
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
 import io.fibril.ganglion.clientServer.utils.rateLimiters.RoomRequestRateLimiter
+import io.fibril.ganglion.clientServer.v1.authentication.RoleType
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.DeleteRoomAliasDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.GetAliasesDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.GetRoomAliasDTO
@@ -35,18 +36,18 @@ internal class RoomAliasController @Inject constructor(
         router.get(GET_ALIASES_PATH)
             .addRequestRateLimiter(RoomRequestRateLimiter.getInstance())
             .useDTOValidation(GetAliasesDTO::class.java)
-            .authenticatedRouteForUser()
+            .authenticatedRoute(minimumRoleType = RoleType.USER)
             .handler(::getRoomAliases)
 
         router.route().handler(BodyHandler.create())
         router.put(PUT_ROOM_ALIAS_PATH)
             .useDTOValidation(PutRoomAliasDTO::class.java)
-            .authenticatedRouteForUser()
+            .authenticatedRoute(minimumRoleType = RoleType.USER)
             .handler(::putRoomAlias)
 
         router.delete(DELETE_ROOM_ALIAS_PATH)
             .useDTOValidation(DeleteRoomAliasDTO::class.java)
-            .authenticatedRouteForUser()
+            .authenticatedRoute(minimumRoleType = RoleType.USER)
             .handler(::deleteRoomAlias)
 
         return router

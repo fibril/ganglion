@@ -14,6 +14,7 @@ import io.fibril.ganglion.clientServer.v1.rooms.dtos.GetAliasesDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.GetRoomAliasDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.PutRoomAliasDTO
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
+import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAliasId
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -227,8 +228,19 @@ class RoomAliasServiceImpl @Inject constructor(
     }
 
 
-    override suspend fun findOne(id: String): Future<RoomAlias> {
-        TODO("Not yet implemented")
+    override suspend fun findOne(id: String): Future<RoomAlias?> {
+        val roomAliasId = try {
+            RoomAliasId(id)
+        } catch (e: IllegalStateException) {
+            return Future.failedFuture(
+                RequestException(
+                    400,
+                    e.message!!,
+                    StandardErrorResponse(ErrorCodes.M_BAD_JSON, e.message).asJson()
+                )
+            )
+        }
+        return getRoomAlias(GetRoomAliasDTO(json = JsonObject.of("roomAlias", roomAliasId.toString())))
     }
 
     override suspend fun findAll(): Future<List<RoomAlias>> {

@@ -7,13 +7,8 @@ import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
 
 
-enum class UserType {
-    USER,
-    ADMIN
-}
-
 object RequestAuthenticator {
-    fun handleRequestAuthentication(routingContext: RoutingContext, forUserType: UserType) {
+    fun handleRequestAuthentication(routingContext: RoutingContext, minimumRoleType: RoleType) {
         val bearerToken = routingContext.request().headers().get("Authorization")
 
         if (bearerToken == null) {
@@ -27,46 +22,40 @@ object RequestAuthenticator {
             return
         }
 
-        when (forUserType) {
-            UserType.USER -> {
-                GanglionJWTAuthProviderImpl(routingContext.vertx()).authenticate(
-                    bearerToken
-                ).onSuccess { vertxUser ->
-                    routingContext.setUser(vertxUser)
-                    routingContext.next()
-                }.onFailure { err ->
-                    routingContext.response()
-                        .setStatusCode(401)
-                        .end(
-                            StandardErrorResponse(
-                                errCode = ErrorCodes.M_UNKNOWN_TOKEN,
-                                error = err.message,
-                                JsonObject.of("soft_logout", true)
-                            ).toString()
-                        )
-                }
+        GanglionJWTAuthProviderImpl(routingContext.vertx()).authenticate(
+            bearerToken
+        ).onSuccess { vertxUser ->
+            val role = vertxUser.principal().getString("role") ?: ""
+            val roleType: RoleType? = RoleType.entries.find { roleType -> roleType.name.lowercase() == role }
+            if (roleHasAbility(roleType, minimumRoleType)) {
+                routingContext.setUser(vertxUser)
+                routingContext.next()
+            } else {
+                routingContext.response()
+                    .setStatusCode(401)
+                    .end(
+                        StandardErrorResponse(
+                            errCode = ErrorCodes.M_UNKNOWN_TOKEN,
+                            error = "Unauthorized",
+                            JsonObject.of("soft_logout", true)
+                        ).toString()
+                    )
             }
-
-            UserType.ADMIN -> {
-                GanglionJWTAuthProviderImpl(routingContext.vertx()).authenticate(
-                    bearerToken
-                ).onSuccess { vertxUser ->
-                    // TODO: Verify the user is admin
-                    routingContext.setUser(vertxUser)
-                    routingContext.next()
-                }.onFailure { err ->
-                    routingContext.response()
-                        .setStatusCode(401)
-                        .end(
-                            StandardErrorResponse(
-                                errCode = ErrorCodes.M_UNKNOWN_TOKEN,
-                                error = err.message,
-                                JsonObject.of("soft_logout", true)
-                            ).toString()
-                        )
-                }
-            }
+        }.onFailure { err ->
+            routingContext.response()
+                .setStatusCode(401)
+                .end(
+                    StandardErrorResponse(
+                        errCode = ErrorCodes.M_UNKNOWN_TOKEN,
+                        error = err.message,
+                        JsonObject.of("soft_logout", true)
+                    ).toString()
+                )
         }
+    }
+
+    private fun roleHasAbility(roleType: RoleType?, minimumRoleType: RoleType): Boolean {
+        return roleType != null && roleHierarchy[roleType]!! >= roleHierarchy[minimumRoleType]!!
     }
 
 }

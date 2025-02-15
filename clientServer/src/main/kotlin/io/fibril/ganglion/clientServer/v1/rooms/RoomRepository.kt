@@ -89,7 +89,42 @@ class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) :
     }
 
     override suspend fun find(id: String): Room? {
-        TODO("Not yet implemented")
+        val client = database.client()
+        val result: Promise<JsonObject?> = Promise.promise()
+        var error: PgException? = null
+
+        client.preparedQuery(GET_ROOM_QUERY).execute(Tuple.of(id)).onSuccess { res ->
+            run {
+                try {
+                    result.complete(res.first().toJson())
+                } catch (e: NoSuchElementException) {
+                    result.complete(null)
+                }
+            }
+        }
+            .onFailure { err ->
+                run {
+                    error = PgException(
+                        err.message,
+                        "SEVERE",
+                        "500",
+                        err.message
+                    )
+                    result.fail(error);
+                }
+            }
+
+        val resPayload = result.future().toCompletionStage().await()
+
+        if (resPayload == null && error != null) {
+            throw error!!
+        }
+
+        if (resPayload == null) {
+            return null
+        }
+
+        return Room(resPayload)
     }
 
 
@@ -310,6 +345,7 @@ class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) :
     companion object {
         val CREATE_ROOM_QUERY = ResourceBundleConstants.roomQueries.getString("createRoom")
         val DELETE_ROOM_QUERY = ResourceBundleConstants.roomQueries.getString("deleteRoom")
+        val GET_ROOM_QUERY = ResourceBundleConstants.roomQueries.getString("findRoom")
 
         val CREATE_ROOM_ALIAS_QUERY = ResourceBundleConstants.roomQueries.getString("createRoomAlias")
         val GET_ROOM_ALIAS_QUERY = ResourceBundleConstants.roomQueries.getString("getRoomAlias")

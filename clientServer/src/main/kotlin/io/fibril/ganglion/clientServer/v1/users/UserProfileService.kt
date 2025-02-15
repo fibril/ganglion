@@ -32,7 +32,7 @@ class UserProfileServiceImpl @Inject constructor(
         TODO()
     }
 
-    override suspend fun findOne(id: String): Future<UserProfile> {
+    override suspend fun findOne(id: String): Future<UserProfile?> {
         TODO()
     }
 
@@ -48,8 +48,6 @@ class UserProfileServiceImpl @Inject constructor(
                 )
             )
         }
-
-        println("userProfile ${userProfile!!.asJson()}")
 
         return Future.succeededFuture(userProfile)
     }
