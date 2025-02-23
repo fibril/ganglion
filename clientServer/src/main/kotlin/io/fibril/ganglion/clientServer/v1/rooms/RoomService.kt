@@ -8,9 +8,13 @@ import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.extensions.exclude
 import io.fibril.ganglion.clientServer.utils.Utils
+import io.fibril.ganglion.clientServer.utils.pagination.KeySetPagination
+import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
+import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventNames
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventUtils
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomMembershipState
 import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.CreateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.UpdateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEvent
@@ -19,7 +23,6 @@ import io.fibril.ganglion.clientServer.v1.rooms.models.Room
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomId
 import io.vertx.core.Future
-import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -33,11 +36,14 @@ import io.vertx.ext.auth.User as VertxUser
 interface RoomService : Service<Room> {
     suspend fun getJoinedRooms(vertxUser: VertxUser): Future<List<RoomEvent>>
     suspend fun inviteUser(inviteUserDTO: InviteUserDTO): Future<RoomEvent>
-    suspend fun joinViaRoomIdOrAlias(joinRoomViaRoomIdOrAliasDTO: JoinRoomViaRoomIdOrAliasDTO): Future<JsonObject>
-    suspend fun joinViaRoomId(joinRoomViaRoomIdDTO: JoinRoomViaRoomIdDTO): Future<JsonObject>
-    suspend fun knockRoom(knockRoomDTO: KnockRoomDTO): Future<JsonObject>
-    suspend fun leaveRoom(leaveRoomDTO: LeaveRoomDTO): Future<JsonObject>
-    suspend fun forgetRoom(forgetRoomDTO: ForgetRoomDTO): Future<JsonObject>
+    suspend fun joinViaRoomIdOrAlias(joinRoomViaRoomIdOrAliasDTO: JoinRoomViaRoomIdOrAliasDTO): Future<RoomEvent>
+    suspend fun joinViaRoomId(joinRoomViaRoomIdDTO: JoinRoomViaRoomIdDTO): Future<RoomEvent>
+    suspend fun knockRoom(knockRoomDTO: KnockRoomDTO): Future<RoomEvent>
+    suspend fun leaveRoom(leaveRoomDTO: LeaveRoomDTO): Future<RoomEvent>
+    suspend fun forgetRoom(forgetRoomDTO: ForgetRoomDTO): Future<RoomEvent>
+    suspend fun kickUser(kickUserDTO: KickUserDTO): Future<RoomEvent>
+    suspend fun banUser(banUserDTO: BanUserDTO): Future<RoomEvent>
+    suspend fun unBanUser(unBanUserDTO: UnBanUserDTO): Future<RoomEvent>
 
 
     suspend fun canJoinRoom(roomId: String, userId: String): Future<Boolean>
@@ -72,6 +78,7 @@ class RoomServiceImpl @Inject constructor(
             RoomEventNames.StateEvents.HISTORY_VISIBILITY,
             RoomEventNames.StateEvents.NAME,
             RoomEventNames.StateEvents.TOPIC,
+            RoomEventNames.StateEvents.GUEST_ACCESS
         )
     }
 
@@ -180,21 +187,54 @@ class RoomServiceImpl @Inject constructor(
         return Future.succeededFuture(room)
     }
 
-    override suspend fun findAll(): Future<List<Room>> {
-        TODO("Not yet implemented")
+    override suspend fun findAll(paginationDTO: PaginationDTO): Future<PaginatedResult<Room>> {
+        val keySetPagination = KeySetPagination(paginationDTO)
+        val results = try {
+            roomRepository.findAll(keySetPagination.prepareQuery(RoomRepositoryImpl.LIST_PUBLIC_ROOMS_QUERY))
+        } catch (e: PgException) {
+            return Future.failedFuture(RequestException.fromPgException(e))
+        }
+        val paginatedResult = keySetPagination.usingQueryResult<Room>(results).paginatedResult
+        return Future.succeededFuture(paginatedResult)
     }
 
     override suspend fun update(id: String, dto: DTO): Future<Room> {
-        TODO("Not yet implemented")
+        val room = try {
+            roomRepository.update(id, dto)
+        } catch (e: PgException) {
+            return Future.failedFuture(
+                RequestException(
+                    500,
+                    e.message ?: "Unknown Exception",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                )
+            )
+        } ?: return Future.failedFuture(
+            RequestException(
+                404,
+                "Room not found",
+                StandardErrorResponse(ErrorCodes.M_NOT_FOUND).asJson()
+            )
+        )
+
+        return Future.succeededFuture(room)
     }
 
-    override suspend fun remove(id: String): Future<Boolean> {
+    override suspend fun remove(id: String): Future<Room> {
         val deletedRoom = try {
             roomRepository.delete(id)
         } catch (e: PgException) {
-            return Future.succeededFuture(false)
+            return Future.failedFuture(RequestException.fromPgException(e))
         }
-        return Future.succeededFuture(deletedRoom != null)
+        if (deletedRoom != null) return Future.succeededFuture(deletedRoom)
+        return Future.failedFuture(
+            RequestException(
+                500,
+                "Unknown Error",
+                StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+            )
+        )
+
     }
 
     override suspend fun inviteUser(inviteUserDTO: InviteUserDTO): Future<RoomEvent> {
@@ -240,32 +280,20 @@ class RoomServiceImpl @Inject constructor(
                     )
                 )
             }
-            val currentMembershipState =
-                JsonObject(inviteeRoomEvent.asJson().getString("content"))?.getString("membership") ?: ""
-            val roomMembershipState =
-                RoomMembership.mapNameToMembershipState.get(currentMembershipState) ?: return Future.failedFuture(
-                    RequestException(
-                        400,
-                        "Cannot transition membership null to invite",
-                        StandardErrorResponse(ErrorCodes.M_BAD_JSON).asJson()
+            val updateRoomEventDTO = UpdateRoomEventDTO(
+                json = JsonObject().apply {
+                    put(
+                        "content",
+                        JsonObject.of(
+                            "membership", RoomMembershipState.INVITE.name.lowercase()
+                        ).mergeIn(JsonObject(inviteeRoomEvent.asJson().getString("content")).exclude("membership"))
                     )
-                )
-            if (RoomMembership.transitionGraph.hasPathFrom(roomMembershipState) to RoomMembershipState.INVITE) {
-                // update membership
-                val updateRoomEventDTO = UpdateRoomEventDTO(
-                    json = JsonObject().apply {
-                        put(
-                            "content",
-                            JsonObject.of(
-                                "membership", RoomMembershipState.INVITE.name.lowercase()
-                            ).mergeIn(JsonObject(inviteeRoomEvent.asJson().getString("content")).exclude("membership"))
-                        )
-                    },
-                    roomEventName = RoomEventNames.StateEvents.MEMBER,
-                    sender = inviteUserDTO.sender!!
-                )
-                return roomEventService.update(inviteeRoomEvent.id, updateRoomEventDTO)
-            }
+                },
+                roomEventName = RoomEventNames.StateEvents.MEMBER,
+                sender = inviteUserDTO.sender!!
+            )
+            return roomEventService.update(inviteeRoomEvent.id, updateRoomEventDTO)
+
         }
         return Future.failedFuture(
             RequestException(
@@ -276,7 +304,7 @@ class RoomServiceImpl @Inject constructor(
         )
     }
 
-    override suspend fun joinViaRoomIdOrAlias(joinRoomViaRoomIdOrAliasDTO: JoinRoomViaRoomIdOrAliasDTO): Future<JsonObject> {
+    override suspend fun joinViaRoomIdOrAlias(joinRoomViaRoomIdOrAliasDTO: JoinRoomViaRoomIdOrAliasDTO): Future<RoomEvent> {
         val params = joinRoomViaRoomIdOrAliasDTO.params()
         val vertxUser = joinRoomViaRoomIdOrAliasDTO.sender ?: return Future.failedFuture(
             RequestException(
@@ -308,7 +336,7 @@ class RoomServiceImpl @Inject constructor(
         )
     }
 
-    override suspend fun joinViaRoomId(joinRoomViaRoomIdDTO: JoinRoomViaRoomIdDTO): Future<JsonObject> {
+    override suspend fun joinViaRoomId(joinRoomViaRoomIdDTO: JoinRoomViaRoomIdDTO): Future<RoomEvent> {
         val params = joinRoomViaRoomIdDTO.params()
         val vertxUser = joinRoomViaRoomIdDTO.sender ?: return Future.failedFuture(
             RequestException(
@@ -332,7 +360,7 @@ class RoomServiceImpl @Inject constructor(
         )
     }
 
-    override suspend fun knockRoom(knockRoomDTO: KnockRoomDTO): Future<JsonObject> {
+    override suspend fun knockRoom(knockRoomDTO: KnockRoomDTO): Future<RoomEvent> {
         val params = knockRoomDTO.params()
         val vertxUser = knockRoomDTO.sender ?: return Future.failedFuture(
             RequestException(
@@ -364,7 +392,7 @@ class RoomServiceImpl @Inject constructor(
         )
     }
 
-    override suspend fun leaveRoom(leaveRoomDTO: LeaveRoomDTO): Future<JsonObject> {
+    override suspend fun leaveRoom(leaveRoomDTO: LeaveRoomDTO): Future<RoomEvent> {
         val params = leaveRoomDTO.params()
         val vertxUser = leaveRoomDTO.sender
         val userId = vertxUser?.principal()?.getString("sub") ?: return Future.failedFuture(
@@ -405,29 +433,10 @@ class RoomServiceImpl @Inject constructor(
             sender = vertxUser
         )
 
-        val leftPromise = Promise.promise<Boolean>()
-        try {
-            roomEventService.update(leaverRoomEvent.id, updateRoomEventDTO).onSuccess {
-                leftPromise.complete(true)
-            }.onFailure {
-                leftPromise.complete(false)
-            }
-        } catch (e: RequestException) {
-            return Future.failedFuture(e)
-        }
-        val left = leftPromise.future().toCompletionStage().await()
-        return if (left)
-            Future.succeededFuture(JsonObject.of("room_id", roomId))
-        else Future.failedFuture(
-            RequestException(
-                500,
-                "Unknown Error",
-                StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
-            )
-        )
+        return roomEventService.update(leaverRoomEvent.id, updateRoomEventDTO)
     }
 
-    override suspend fun forgetRoom(forgetRoomDTO: ForgetRoomDTO): Future<JsonObject> {
+    override suspend fun forgetRoom(forgetRoomDTO: ForgetRoomDTO): Future<RoomEvent> {
         val params = forgetRoomDTO.params()
         val vertxUser = forgetRoomDTO.sender
         val userId = vertxUser?.principal()?.getString("sub") ?: return Future.failedFuture(
@@ -450,24 +459,59 @@ class RoomServiceImpl @Inject constructor(
             )
         )
 
-        val forgotPromise = Promise.promise<Boolean>()
-        try {
-            roomEventService.remove(leaverRoomEvent.id).onSuccess {
-                forgotPromise.complete(true)
-            }.onFailure {
-                forgotPromise.complete(false)
-            }
-        } catch (e: RequestException) {
-            return Future.failedFuture(e)
+        return roomEventService.remove(leaverRoomEvent.id)
+    }
+
+    override suspend fun kickUser(kickUserDTO: KickUserDTO): Future<RoomEvent> {
+        val params = kickUserDTO.params()
+        val senderId = kickUserDTO.sender?.principal()?.getString("sub") ?: ""
+        val roomId = params.getString("roomId")
+        val userId = params.getString("user_id")
+        val canKickUser = canKick(roomId, senderId, userId).toCompletionStage().await()
+        if (canKickUser) {
+            return kick(roomId, userId)
         }
-        val forgot = forgotPromise.future().toCompletionStage().await()
-        return if (forgot)
-            Future.succeededFuture(JsonObject.of("room_id", roomId))
-        else Future.failedFuture(
+        return Future.failedFuture(
             RequestException(
-                500,
-                "Unknown Error",
-                StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                403,
+                "Member kick denied",
+                StandardErrorResponse(ErrorCodes.M_UNAUTHORIZED, "Member kick denied").asJson()
+            )
+        )
+    }
+
+    override suspend fun banUser(banUserDTO: BanUserDTO): Future<RoomEvent> {
+        val params = banUserDTO.params()
+        val senderId = banUserDTO.sender?.principal()?.getString("sub") ?: ""
+        val roomId = params.getString("roomId")
+        val userId = params.getString("user_id")
+        val canBanUser = canBan(roomId, senderId, userId).toCompletionStage().await()
+        if (canBanUser) {
+            return ban(roomId, userId)
+        }
+        return Future.failedFuture(
+            RequestException(
+                403,
+                "Member ban denied",
+                StandardErrorResponse(ErrorCodes.M_UNAUTHORIZED, "Member ban denied").asJson()
+            )
+        )
+    }
+
+    override suspend fun unBanUser(unBanUserDTO: UnBanUserDTO): Future<RoomEvent> {
+        val params = unBanUserDTO.params()
+        val senderId = unBanUserDTO.sender?.principal()?.getString("sub") ?: ""
+        val roomId = params.getString("roomId")
+        val userId = params.getString("user_id")
+        val canUnBanUser = canUnBan(roomId, senderId, userId).toCompletionStage().await()
+        if (canUnBanUser) {
+            return unBan(roomId, userId)
+        }
+        return Future.failedFuture(
+            RequestException(
+                403,
+                "Member unban denied",
+                StandardErrorResponse(ErrorCodes.M_UNAUTHORIZED, "Member unban denied").asJson()
             )
         )
     }
@@ -530,6 +574,11 @@ class RoomServiceImpl @Inject constructor(
         return canDo("ban", roomId, roomMemberId, anotherMemberId)
     }
 
+    suspend fun canUnBan(roomId: String, roomMemberId: String, anotherMemberId: String): Future<Boolean> {
+        // if can ban a user, then you can unban same user
+        return canBan(roomId, roomMemberId, anotherMemberId)
+    }
+
     override suspend fun canInvite(roomId: String, roomMemberId: String, anotherMemberId: String): Future<Boolean> {
         return canDo("invite", roomId, roomMemberId, anotherMemberId)
     }
@@ -586,7 +635,7 @@ class RoomServiceImpl @Inject constructor(
         return Future.succeededFuture(true)
     }
 
-    private suspend fun joinRoom(roomId: String, vertxUser: User): Future<JsonObject> {
+    private suspend fun joinRoom(roomId: String, vertxUser: User): Future<RoomEvent> {
         val joinerId = vertxUser.principal()?.getString("sub") ?: return Future.failedFuture(
             RequestException(
                 401,
@@ -594,8 +643,6 @@ class RoomServiceImpl @Inject constructor(
                 StandardErrorResponse(ErrorCodes.M_BAD_JSON, "No user found").asJson()
             )
         )
-        // if the user already has an invitation, upgrade it to join
-        val createdPromise = Promise.promise<Boolean>()
         val inviteeRoomEvent = roomEventService.getRoomMemberEvent(roomId, joinerId)
         val powerLevelEvent = roomEventService.getRoomPowerLevelEvent(roomId)
         val defaultPowerLevelForJoiners = JsonObject(
@@ -626,15 +673,7 @@ class RoomServiceImpl @Inject constructor(
                 sender = vertxUser
             )
 
-            try {
-                roomEventService.create(createRoomEventDTO).onSuccess {
-                    createdPromise.complete(true)
-                }.onFailure {
-                    createdPromise.complete(false)
-                }
-            } catch (e: RequestException) {
-                return Future.failedFuture(e)
-            }
+            return roomEventService.create(createRoomEventDTO)
         } else {
             // update the event to join
             val updateRoomEventDTO = UpdateRoomEventDTO(
@@ -654,32 +693,11 @@ class RoomServiceImpl @Inject constructor(
                 roomEventName = RoomEventNames.StateEvents.MEMBER,
                 sender = vertxUser
             )
-
-            try {
-                roomEventService.update(inviteeRoomEvent.id, updateRoomEventDTO).onSuccess {
-                    createdPromise.complete(true)
-                }.onFailure {
-                    createdPromise.complete(false)
-                }
-            } catch (e: RequestException) {
-                return Future.failedFuture(e)
-            }
-        }
-        val created = createdPromise.future().toCompletionStage().await()
-        return if (created) {
-            Future.succeededFuture(JsonObject().put("room_id", roomId))
-        } else {
-            Future.failedFuture(
-                RequestException(
-                    500,
-                    "Unknown Error",
-                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
-                )
-            )
+            return roomEventService.update(inviteeRoomEvent.id, updateRoomEventDTO)
         }
     }
 
-    private suspend fun knock(roomId: String, vertxUser: User): Future<JsonObject> {
+    private suspend fun knock(roomId: String, vertxUser: User): Future<RoomEvent> {
         val knockerId = vertxUser.principal()?.getString("sub") ?: return Future.failedFuture(
             RequestException(
                 401,
@@ -687,8 +705,6 @@ class RoomServiceImpl @Inject constructor(
                 StandardErrorResponse(ErrorCodes.M_BAD_JSON, "No user found").asJson()
             )
         )
-        // if the user already has an invitation, upgrade it to join
-        val createdPromise = Promise.promise<Boolean>()
         val knockerRoomEvent = roomEventService.getRoomMemberEvent(roomId, knockerId)
         val powerLevelEvent = roomEventService.getRoomPowerLevelEvent(roomId)
         val defaultPowerLevelForKnockers = JsonObject(
@@ -719,15 +735,7 @@ class RoomServiceImpl @Inject constructor(
                 sender = vertxUser
             )
 
-            try {
-                roomEventService.create(createRoomEventDTO).onSuccess {
-                    createdPromise.complete(true)
-                }.onFailure {
-                    createdPromise.complete(false)
-                }
-            } catch (e: RequestException) {
-                return Future.failedFuture(e)
-            }
+            return roomEventService.create(createRoomEventDTO)
         } else if (JsonObject(
                 knockerRoomEvent.asJson().getString("content") ?: JsonObject().toString()
             ).getString("membership") == RoomMembershipState.LEAVE.name.lowercase()
@@ -751,33 +759,117 @@ class RoomServiceImpl @Inject constructor(
                 sender = vertxUser
             )
 
-            try {
-                roomEventService.update(knockerRoomEvent.id, updateRoomEventDTO).onSuccess {
-                    createdPromise.complete(true)
-                }.onFailure {
-                    createdPromise.complete(false)
-                }
-            } catch (e: RequestException) {
-                return Future.failedFuture(e)
-            }
-        } else {
-            createdPromise.complete(false)
+            return roomEventService.update(knockerRoomEvent.id, updateRoomEventDTO)
         }
-
-        val created = createdPromise.future().toCompletionStage().await()
-        return if (created) {
-            Future.succeededFuture(JsonObject().put("room_id", roomId))
-        } else {
-            Future.failedFuture(
-                RequestException(
-                    500,
-                    "Unknown Error",
-                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
-                )
+        return Future.failedFuture(
+            RequestException(
+                500,
+                "Unknown Error",
+                StandardErrorResponse(ErrorCodes.M_UNKNOWN, "Cannot knock on room").asJson()
             )
-        }
+        )
     }
 
+    private suspend fun kick(roomId: String, userToKickId: String): Future<RoomEvent> {
+        val userToKickRoomEvent =
+            roomEventService.getRoomMemberEvent(roomId, userToKickId) ?: return Future.failedFuture(
+                RequestException(
+                    403,
+                    "",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN, "User not in room").asJson()
+                )
+            )
+        val powerLevelEvent = roomEventService.getRoomPowerLevelEvent(roomId)
+        val defaultPowerLevelForLeavers = JsonObject(
+            powerLevelEvent?.asJson()?.getString("content") ?: JsonObject().toString()
+        ).getString("users_default") ?: 0
+
+        val updateRoomEventDTO = UpdateRoomEventDTO(
+            json = JsonObject().apply {
+                put(
+                    "content",
+                    JsonObject.of(
+                        "membership", RoomMembershipState.LEAVE.name.lowercase(),
+                        "power_level", defaultPowerLevelForLeavers
+                    ).mergeIn(
+                        JsonObject(
+                            userToKickRoomEvent.asJson().getString("content")
+                        ).exclude("membership", "power_level")
+                    )
+                )
+            },
+            roomEventName = RoomEventNames.StateEvents.MEMBER,
+            sender = null
+        )
+
+        return roomEventService.update(userToKickRoomEvent.id, updateRoomEventDTO)
+    }
+
+    private suspend fun ban(roomId: String, userToBanId: String): Future<RoomEvent> {
+        val userToBanRoomEvent =
+            roomEventService.getRoomMemberEvent(roomId, userToBanId) ?: return Future.failedFuture(
+                RequestException(
+                    403,
+                    "",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN, "User not in room").asJson()
+                )
+            )
+
+        val updateRoomEventDTO = UpdateRoomEventDTO(
+            json = JsonObject().apply {
+                put(
+                    "content",
+                    JsonObject.of(
+                        "membership", RoomMembershipState.BAN.name.lowercase(),
+                        "power_level", -1
+                    ).mergeIn(
+                        JsonObject(
+                            userToBanRoomEvent.asJson().getString("content")
+                        ).exclude("membership", "power_level")
+                    )
+                )
+            },
+            roomEventName = RoomEventNames.StateEvents.MEMBER,
+            sender = null
+        )
+
+        return roomEventService.update(userToBanRoomEvent.id, updateRoomEventDTO)
+    }
+
+    private suspend fun unBan(roomId: String, userToUnBanId: String): Future<RoomEvent> {
+        val userToBanRoomEvent =
+            roomEventService.getRoomMemberEvent(roomId, userToUnBanId) ?: return Future.failedFuture(
+                RequestException(
+                    403,
+                    "",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN, "User not in room").asJson()
+                )
+            )
+        val powerLevelEvent = roomEventService.getRoomPowerLevelEvent(roomId)
+        val defaultPowerLevelForLeavers = JsonObject(
+            powerLevelEvent?.asJson()?.getString("content") ?: JsonObject().toString()
+        ).getString("users_default") ?: 0
+
+        val updateRoomEventDTO = UpdateRoomEventDTO(
+            json = JsonObject().apply {
+                put(
+                    "content",
+                    JsonObject.of(
+                        "membership", RoomMembershipState.LEAVE.name.lowercase(),
+                        "power_level", defaultPowerLevelForLeavers
+                    ).mergeIn(
+                        JsonObject(
+                            userToBanRoomEvent.asJson().getString("content")
+                        ).exclude("membership", "power_level")
+                    )
+                )
+            },
+            roomEventName = RoomEventNames.StateEvents.MEMBER,
+            sender = null
+        )
+
+        return roomEventService.update(userToBanRoomEvent.id, updateRoomEventDTO)
+    }
 
     private suspend fun canDo(
         action: String,
@@ -794,7 +886,10 @@ class RoomServiceImpl @Inject constructor(
 
         return Future.succeededFuture(
             powerLevels != null &&
+                    // room member must be in the room
                     roomMemberEvent != null &&
+                    JsonObject(roomMemberEvent.asJson().getString("content"))
+                        .getString("membership") == RoomMembershipState.JOIN.name &&
                     comparePowerLevel(
                         JsonObject(powerLevels.asJson().getString("content")).getInteger(action) ?: 0,
                         JsonObject(roomMemberEvent.asJson().getString("content"))

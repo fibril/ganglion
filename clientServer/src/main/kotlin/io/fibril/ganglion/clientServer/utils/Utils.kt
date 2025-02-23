@@ -20,4 +20,11 @@ object Utils {
     fun generateRoomId(): String = "${ROOM_ID_PREFIX}${shortIdGenerator()}:${ResourceBundleConstants.domain}"
 
     fun generateRoomEventId(): String = "${ROOM_EVENT_ID_PREFIX}${shortIdGenerator()}:${ResourceBundleConstants.domain}"
+
+    fun clamp(number: Int, lower: Int, upper: Int): Int {
+        var res = if (number < upper) number else upper
+        res = if (number > lower) number else lower
+
+        return res
+    }
 }

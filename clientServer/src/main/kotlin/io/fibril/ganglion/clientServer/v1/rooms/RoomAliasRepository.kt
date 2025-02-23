@@ -186,8 +186,26 @@ class RoomAliasRepositoryImpl @Inject constructor(private val database: PGDataba
         TODO("Not yet implemented")
     }
 
-    override suspend fun findAll(): List<RoomAlias> {
-        TODO("Not yet implemented")
+    override suspend fun findAll(query: String): List<RoomAlias> {
+        val client = database.client()
+        val result: Promise<List<RoomAlias>> = Promise.promise()
+        client.query(query)
+            .execute()
+            .onSuccess { res ->
+                result.complete(res.map { RoomAlias(it.toJson()) })
+            }
+            .onFailure { err ->
+                throw PgException(
+                    err.message,
+                    "SEVERE",
+                    "500",
+                    err.message
+                )
+            }
+            .eventually { _ -> client.close() }
+
+        val roomAliases = result.future().toCompletionStage().await()
+        return roomAliases
     }
 
     override suspend fun update(id: String, dto: DTO): RoomAlias? {

@@ -15,7 +15,6 @@ import io.vertx.core.json.JsonObject
 import io.vertx.pgclient.PgException
 import io.vertx.sqlclient.DatabaseException
 import io.vertx.sqlclient.Tuple
-import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.future.await
 import java.util.*
 
@@ -131,19 +130,26 @@ class UserRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         return User(resPayload)
     }
 
-    override suspend fun findAll(): List<User> {
+    override suspend fun findAll(query: String): List<User> {
         val client = database.client()
-        val queryResult = client.query(FIND_ALL_USERS_QUERY).execute()
-            .toCompletionStage().asDeferred()
+        val result: Promise<List<User>> = Promise.promise()
+        client.query(query)
+            .execute()
+            .onSuccess { res ->
+                result.complete(res.map { User(it.toJson()) })
+            }
+            .onFailure { err ->
+                throw PgException(
+                    err.message,
+                    "SEVERE",
+                    "500",
+                    err.message
+                )
+            }
+            .eventually { _ -> client.close() }
 
-        val rowSet = queryResult.await()
-
-        return try {
-            rowSet.toList().map { User(it.toJson()) }
-        } finally {
-            client.close()
-
-        }
+        val users = result.future().toCompletionStage().await()
+        return users
     }
 
     override suspend fun update(id: String, dto: DTO): User? {

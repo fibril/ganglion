@@ -4,6 +4,7 @@ import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Repository
 import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
+import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.UpdateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.*
 import io.fibril.ganglion.clientServer.v1.rooms.models.Room
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
@@ -11,7 +12,6 @@ import io.fibril.ganglion.storage.impl.PGDatabase
 import io.vertx.core.Promise
 import io.vertx.core.json.JsonObject
 import io.vertx.pgclient.PgException
-import io.vertx.sqlclient.DatabaseException
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.future.await
 
@@ -39,7 +39,6 @@ class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         val pool = database.pool()
 
         val result: Promise<JsonObject> = Promise.promise()
-        var error: DatabaseException? = null
 
         pool.connection
             .onSuccess { conn ->
@@ -68,22 +67,17 @@ class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) :
                     .onSuccess { }
                     .onFailure { err ->
                         run {
-                            error = PgException(
+                            throw PgException(
                                 err.message,
                                 "SEVERE",
                                 "500",
                                 err.message
                             )
-                            result.fail(error);
                         }
                     }
             }
 
         val resPayload = result.future().toCompletionStage().await()
-
-        if (resPayload == null && error != null) {
-            throw error!!
-        }
 
         return Room(resPayload)
     }
@@ -91,7 +85,6 @@ class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) :
     override suspend fun find(id: String): Room? {
         val client = database.client()
         val result: Promise<JsonObject?> = Promise.promise()
-        var error: PgException? = null
 
         client.preparedQuery(GET_ROOM_QUERY).execute(Tuple.of(id)).onSuccess { res ->
             run {
@@ -104,36 +97,88 @@ class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         }
             .onFailure { err ->
                 run {
-                    error = PgException(
+                    throw PgException(
                         err.message,
                         "SEVERE",
                         "500",
                         err.message
                     )
-                    result.fail(error);
                 }
             }
 
-        val resPayload = result.future().toCompletionStage().await()
-
-        if (resPayload == null && error != null) {
-            throw error!!
-        }
-
-        if (resPayload == null) {
-            return null
-        }
+        val resPayload = result.future().toCompletionStage().await() ?: return null
 
         return Room(resPayload)
     }
 
 
-    override suspend fun findAll(): List<Room> {
-        TODO("Not yet implemented")
+    override suspend fun findAll(query: String): List<Room> {
+        println("query $query")
+        val client = database.client()
+        val result: Promise<List<Room>> = Promise.promise()
+
+        client.query(query)
+            .execute()
+            .onSuccess { res ->
+                result.complete(res.map { Room(it.toJson()) })
+            }
+            .onFailure { err ->
+                throw PgException(
+                    err.message,
+                    "SEVERE",
+                    "500",
+                    err.message
+                )
+            }
+            .eventually { _ -> client.close() }
+
+        val rooms = result.future().toCompletionStage().await()
+        return rooms
+
     }
 
     override suspend fun update(id: String, dto: DTO): Room? {
-        TODO("Not yet implemented")
+        val client = database.client()
+        val result: Promise<Room> = Promise.promise()
+
+        val updateRoomEventDTO = (dto as UpdateRoomEventDTO)
+
+        val params = updateRoomEventDTO.params()
+        val keys = params.map.keys
+        val values = mutableListOf<Any>().apply {
+            for (key in keys) {
+                add("$key = '${params.getValue(key)}'")
+            }
+        }
+
+        val queryString = """
+                UPDATE rooms SET ${values.joinToString(", ")}
+                WHERE id = '$id' 
+                RETURNING *;
+            """.trimIndent()
+
+        client.query(
+            queryString
+        ).execute()
+            .onSuccess { res ->
+                try {
+                    result.complete(Room(res.first().toJson()))
+                } catch (error: NoSuchElementException) {
+                    result.complete(null)
+                }
+            }
+            .onFailure { err ->
+                throw PgException(
+                    err.message,
+                    "SEVERE",
+                    "500",
+                    err.message
+                )
+            }
+            .eventually { _ -> client.close() }
+
+        val room = result.future().toCompletionStage().await()
+        return room
     }
 
     override suspend fun delete(id: String): Room {
@@ -351,6 +396,8 @@ class RoomRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         val GET_ROOM_ALIAS_QUERY = ResourceBundleConstants.roomQueries.getString("getRoomAlias")
         val GET_ALIASES_QUERY = ResourceBundleConstants.roomQueries.getString("getRoomAliases")
         val DELETE_ROOM_ALIAS_QUERY = ResourceBundleConstants.roomQueries.getString("deleteRoomAlias")
+
+        val LIST_PUBLIC_ROOMS_QUERY = ResourceBundleConstants.roomQueries.getString("listPublicRooms")
     }
 
 

@@ -57,7 +57,7 @@ class DeviceRepositoryImpl @Inject constructor(private val database: PGDatabase)
         }
     }
 
-    override suspend fun findAll(): List<Device> {
+    override suspend fun findAll(query: String): List<Device> {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 

@@ -45,7 +45,7 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
                                 params.getString("id"),
                                 (dto as CreateRoomEventDTO).sender.principal().getString("sub"),
                                 params.getString("room_id"),
-                                params.getString("content"),
+                                JsonObject(params.getString("content")),
                                 params.getString("state_key"),
                                 params.getString("type"),
                             )
@@ -96,14 +96,31 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
     }
 
 
-    override suspend fun findAll(): List<RoomEvent> {
-        TODO("Not yet implemented")
+    override suspend fun findAll(query: String): List<RoomEvent> {
+        val client = database.client()
+        val result: Promise<List<RoomEvent>> = Promise.promise()
+        client.query(query)
+            .execute()
+            .onSuccess { res ->
+                result.complete(res.map { RoomEvent(it.toJson()) })
+            }
+            .onFailure { err ->
+                throw PgException(
+                    err.message,
+                    "SEVERE",
+                    "500",
+                    err.message
+                )
+            }
+            .eventually { _ -> client.close() }
+
+        val roomEvents = result.future().toCompletionStage().await()
+        return roomEvents
     }
 
     override suspend fun update(id: String, dto: DTO): RoomEvent? {
         val client = database.client()
         val result: Promise<RoomEvent> = Promise.promise()
-        var error: PgException? = null
 
         val updateRoomEventDTO = (dto as UpdateRoomEventDTO)
 
@@ -125,25 +142,20 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
             queryString
         ).execute()
             .onSuccess { res ->
-                result.complete(RoomEvent(res.first().toJson()))
+                val response = res.firstOrNull()?.toJson()
+                result.complete(if (response != null) RoomEvent(response) else null)
             }
             .onFailure { err ->
-                error = PgException(
+                throw PgException(
                     err.message,
                     "SEVERE",
                     "500",
                     err.message
                 )
-                result.fail(err)
             }
             .eventually { _ -> client.close() }
 
         val roomEvent = result.future().toCompletionStage().await()
-        println("roomEVENT $roomEvent")
-
-        if (roomEvent == null && error != null) {
-            throw error!!
-        }
 
         return roomEvent
     }
@@ -191,42 +203,17 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
     }
 
     override suspend fun fetchEvents(conditionsMap: Map<String, String>): List<RoomEvent> {
-        val client = database.client()
-        val result: Promise<List<RoomEvent>> = Promise.promise()
-        var error: PgException? = null
-
         val valuesQuery = mutableListOf<Any>().apply {
             for (key in conditionsMap.keys) {
                 add("$key = '${conditionsMap[key]}'")
             }
         }.joinToString(" AND ")
 
-        client.query(
-            """
+        val query = """
                 SELECT * FROM room_events WHERE $valuesQuery;
             """.trimIndent()
-        ).execute()
-            .onSuccess { res ->
-                result.complete(res.toList().map { RoomEvent(it.toJson()) })
-            }
-            .onFailure { err ->
-                println("err $err")
-                error = PgException(
-                    err.message,
-                    "SEVERE",
-                    "500",
-                    err.message
-                )
-            }
-            .eventually { _ -> client.close() }
 
-        val list = result.future().toCompletionStage().await()
-
-        if (list == null && error != null) {
-            throw error!!
-        }
-
-        return list
+        return findAll(query)
     }
 
 

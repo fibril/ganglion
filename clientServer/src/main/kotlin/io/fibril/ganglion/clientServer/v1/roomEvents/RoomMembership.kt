@@ -1,4 +1,4 @@
-package io.fibril.ganglion.clientServer.v1.rooms
+package io.fibril.ganglion.clientServer.v1.roomEvents
 
 import io.fibril.ganglion.clientServer.utils.DirectedGraph
 

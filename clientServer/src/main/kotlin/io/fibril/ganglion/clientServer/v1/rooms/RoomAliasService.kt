@@ -6,6 +6,8 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
+import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventDatabaseActions
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventNames
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
@@ -37,22 +39,6 @@ class RoomAliasServiceImpl @Inject constructor(
 
     companion object {
         const val IDENTIFIER = "v1.rooms.RoomAliasService"
-        const val DEFAULT_ROOM_VERSION = 11
-
-        /**
-         * Specifies the order of events that will be created, if applicable,
-         * whenever a room is created
-         */
-        val roomCreationEventNamesInOrder = listOf(
-            RoomEventNames.StateEvents.CREATE,
-            RoomEventNames.StateEvents.MEMBER,
-            RoomEventNames.StateEvents.POWER_LEVELS,
-            RoomEventNames.StateEvents.CANONICAL_ALIAS,
-            RoomEventNames.StateEvents.JOIN_RULES,
-            RoomEventNames.StateEvents.HISTORY_VISIBILITY,
-            RoomEventNames.StateEvents.NAME,
-            RoomEventNames.StateEvents.TOPIC,
-        )
     }
 
     override val identifier = IDENTIFIER
@@ -243,7 +229,7 @@ class RoomAliasServiceImpl @Inject constructor(
         return getRoomAlias(GetRoomAliasDTO(json = JsonObject.of("roomAlias", roomAliasId.toString())))
     }
 
-    override suspend fun findAll(): Future<List<RoomAlias>> {
+    override suspend fun findAll(paginationDTO: PaginationDTO): Future<PaginatedResult<RoomAlias>> {
         TODO("Not yet implemented")
     }
 
@@ -251,7 +237,7 @@ class RoomAliasServiceImpl @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    override suspend fun remove(id: String): Future<Boolean> {
+    override suspend fun remove(id: String): Future<RoomAlias> {
         TODO("Not yet implemented")
     }
 

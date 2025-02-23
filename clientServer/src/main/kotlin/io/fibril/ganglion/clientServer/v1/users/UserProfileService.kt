@@ -6,6 +6,8 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
+import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.fibril.ganglion.clientServer.v1.users.models.UserProfile
 import io.vertx.core.Future
@@ -28,7 +30,7 @@ class UserProfileServiceImpl @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    override suspend fun findAll(): Future<List<UserProfile>> {
+    override suspend fun findAll(paginationDTO: PaginationDTO): Future<PaginatedResult<UserProfile>> {
         TODO()
     }
 
@@ -56,7 +58,7 @@ class UserProfileServiceImpl @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    override suspend fun remove(id: String): Future<Boolean> {
+    override suspend fun remove(id: String): Future<UserProfile> {
         TODO("Not yet implemented")
     }
 

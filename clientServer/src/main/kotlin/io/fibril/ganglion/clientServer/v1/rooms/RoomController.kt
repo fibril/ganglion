@@ -2,12 +2,15 @@ package io.fibril.ganglion.clientServer.v1.rooms
 
 import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.Controller
+import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
+import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.extensions.addRequestRateLimiter
 import io.fibril.ganglion.clientServer.extensions.authenticatedRoute
 import io.fibril.ganglion.clientServer.extensions.only
 import io.fibril.ganglion.clientServer.extensions.useDTOValidation
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
+import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.utils.rateLimiters.RoomRequestRateLimiter
 import io.fibril.ganglion.clientServer.v1.authentication.RoleType
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.*
@@ -58,7 +61,7 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
 
         router.post(FORGET_ROOM_PATH)
             .addRequestRateLimiter(RoomRequestRateLimiter.getInstance())
-            .useDTOValidation(LeaveRoomDTO::class.java)
+            .useDTOValidation(ForgetRoomDTO::class.java)
             .authenticatedRoute(RoleType.USER)
             .handler(::forgetRoom)
 
@@ -67,6 +70,30 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
             .useDTOValidation(LeaveRoomDTO::class.java)
             .authenticatedRoute(RoleType.USER)
             .handler(::leaveRoom)
+
+        router.post(KICK_USER_PATH)
+            .useDTOValidation(KickUserDTO::class.java)
+            .authenticatedRoute(RoleType.USER)
+            .handler(::kickUser)
+
+        router.post(BAN_USER_PATH)
+            .useDTOValidation(BanUserDTO::class.java)
+            .authenticatedRoute(RoleType.USER)
+            .handler(::banUser)
+
+        router.post(UNBAN_USER_PATH)
+            .useDTOValidation(UnBanUserDTO::class.java)
+            .authenticatedRoute(RoleType.USER)
+            .handler(::unBanUser)
+
+        router.get(GET_ROOM_VISIBILITY_PATH).handler(::getRoomVisibility)
+
+        router.put(PUT_ROOM_VISIBILITY_PATH)
+            .useDTOValidation(UpdateRoomVisibilityDTO::class.java)
+            .authenticatedRoute(RoleType.ADMIN)
+            .handler(::updateRoomVisibility)
+
+        router.get(GET_PUBLIC_ROOMS_PATH).handler(::getPublicRooms)
 
         return router
     }
@@ -167,7 +194,7 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
             )
             roomService.knockRoom(knockRoomDTO)
                 .onSuccess {
-                    routingContext.end(it.only("room_id").toString())
+                    routingContext.end(it.asJson().only("room_id").toString())
                 }.onFailure {
                     val err = it as RequestException
                     routingContext.response().setStatusCode(err.statusCode)
@@ -209,6 +236,125 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
         }
     }
 
+    private fun kickUser(routingContext: RoutingContext) {
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val kickUserDTO = KickUserDTO(
+                JsonObject.mapFrom(routingContext.pathParams())
+                    .mergeIn(routingContext.body().asJsonObject()), routingContext.user()
+            )
+            roomService.kickUser(kickUserDTO)
+                .onSuccess {
+                    routingContext.end(JsonObject().toString())
+                }.onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
+        }
+    }
+
+    private fun banUser(routingContext: RoutingContext) {
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val banUserDTO = BanUserDTO(
+                JsonObject.mapFrom(routingContext.pathParams())
+                    .mergeIn(routingContext.body().asJsonObject()), routingContext.user()
+            )
+            roomService.banUser(banUserDTO)
+                .onSuccess {
+                    routingContext.end(JsonObject().toString())
+                }.onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
+        }
+    }
+
+    private fun unBanUser(routingContext: RoutingContext) {
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val unBanUserDTO = UnBanUserDTO(
+                JsonObject.mapFrom(routingContext.pathParams())
+                    .mergeIn(routingContext.body().asJsonObject()),
+                routingContext.user()
+            )
+            roomService.unBanUser(unBanUserDTO)
+                .onSuccess {
+                    routingContext.end(JsonObject().toString())
+                }.onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
+        }
+    }
+
+    private fun getRoomVisibility(routingContext: RoutingContext) {
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val roomId = routingContext.pathParams().getOrDefault("roomId", null) ?: run {
+                routingContext.response().setStatusCode(400)
+                routingContext.end(StandardErrorResponse(ErrorCodes.M_BAD_JSON).asJson().toString())
+                return@usingCoroutineScopeWithIODispatcher
+            }
+            roomService.findOne(roomId)
+                .onSuccess {
+                    if (it == null) {
+                        routingContext.response().setStatusCode(404)
+                        routingContext.end(StandardErrorResponse(ErrorCodes.M_NOT_FOUND).asJson().toString())
+                    } else {
+                        routingContext.end(it.asJson().only("visibility").toString())
+                    }
+                }.onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
+        }
+    }
+
+    private fun updateRoomVisibility(routingContext: RoutingContext) {
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val pathParams = routingContext.pathParams()
+            val roomId = pathParams.get("roomId")
+            val updateRoomVisibilityDTO = UpdateRoomVisibilityDTO(
+                JsonObject.mapFrom(pathParams)
+                    .mergeIn(routingContext.body().asJsonObject()),
+                routingContext.user()
+            )
+            roomService.update(roomId!!, updateRoomVisibilityDTO)
+                .onSuccess {
+                    if (it == null) {
+                        routingContext.response().setStatusCode(404)
+                        routingContext.end(StandardErrorResponse(ErrorCodes.M_NOT_FOUND).asJson().toString())
+                    } else {
+                        routingContext.end(it.asJson().only("visibility").toString())
+                    }
+                }.onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
+        }
+    }
+
+    private fun getPublicRooms(routingContext: RoutingContext) {
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val json = JsonObject().apply {
+                for (entry in routingContext.queryParams()) {
+                    put(entry.key, entry.value)
+                }
+            }
+            val dto = PaginationDTO(json)
+            roomService.findAll(dto)
+                .onSuccess {
+                    routingContext.end(it.asJson().toString())
+                }.onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
+        }
+    }
+
 
     companion object {
         const val CREATE_ROOM_PATH = "/v3/createRoom"
@@ -222,5 +368,8 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
         const val KICK_USER_PATH = "/v3/rooms/:roomId/kick"
         const val BAN_USER_PATH = "/v3/rooms/:roomId/ban"
         const val UNBAN_USER_PATH = "/v3/rooms/:roomId/unban"
+        const val GET_ROOM_VISIBILITY_PATH = "/v3/directory/list/room/:roomId"
+        const val PUT_ROOM_VISIBILITY_PATH = "/v3/directory/list/room/:roomId"
+        const val GET_PUBLIC_ROOMS_PATH = "/v3/publicRooms"
     }
 }

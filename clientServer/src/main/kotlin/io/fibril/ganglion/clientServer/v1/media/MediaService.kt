@@ -1,11 +1,13 @@
 package io.fibril.ganglion.clientServer.v1.media
 
+import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Service
-import com.google.inject.Inject
+import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
+import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
+import io.fibril.ganglion.clientServer.v1.media.models.Media
 import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
-import io.fibril.ganglion.clientServer.v1.media.models.Media
 import java.util.*
 
 
@@ -31,11 +33,11 @@ class MediaServiceImpl @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    override suspend fun findAll(): Future<List<Media>> {
+    override suspend fun findAll(paginationDTO: PaginationDTO): Future<PaginatedResult<Media>> {
         TODO()
     }
 
-    override suspend fun findOne(id: String): Future<Media> {
+    override suspend fun findOne(id: String): Future<Media?> {
         TODO()
     }
 
@@ -43,7 +45,7 @@ class MediaServiceImpl @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    override suspend fun remove(id: String): Future<Boolean> {
+    override suspend fun remove(id: String): Future<Media> {
         TODO("Not yet implemented")
     }
 

@@ -146,7 +146,7 @@ object RoomUtils {
                 )
                     .put("sender", senderId)
                     .put("type", RoomEventNames.StateEvents.GUEST_ACCESS)
-                    .put("state_key", senderId)
+                    .put("state_key", RoomEventUtils.EVENT_ONE_OF_EACH_STATE_KEY)
                     .put("room_id", roomId)
             },
             roomEventName = RoomEventNames.StateEvents.GUEST_ACCESS,

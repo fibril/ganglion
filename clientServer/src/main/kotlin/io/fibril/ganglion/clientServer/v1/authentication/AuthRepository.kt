@@ -87,7 +87,7 @@ class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 
-    override suspend fun findAll(): List<Any> {
+    override suspend fun findAll(query: String): List<Any> {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 

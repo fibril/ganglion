@@ -9,8 +9,11 @@ import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.utils.Utils
+import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
+import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.authentication.dtos.LoginDTO
 import io.fibril.ganglion.clientServer.v1.authentication.models.AuthDatabaseActions
+import io.fibril.ganglion.clientServer.v1.authentication.models.Password
 import io.fibril.ganglion.clientServer.v1.devices.DeviceRepository
 import io.fibril.ganglion.clientServer.v1.devices.dtos.CreateDeviceDTO
 import io.fibril.ganglion.clientServer.v1.users.UserRepository
@@ -20,7 +23,7 @@ import io.vertx.core.json.JsonObject
 import org.mindrot.jbcrypt.BCrypt
 import java.util.*
 
-interface AuthService : Service<Any> {
+interface AuthService : Service<Password> {
     suspend fun login(loginDTO: LoginDTO): Future<JsonObject>
     suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Future<Boolean>
 }
@@ -143,23 +146,23 @@ class AuthServiceImpl @Inject constructor(
     override val identifier = IDENTIFIER
 
 
-    override suspend fun create(dto: DTO): Future<Any> {
+    override suspend fun create(dto: DTO): Future<Password> {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 
-    override suspend fun findOne(id: String): Future<Any?> {
+    override suspend fun findOne(id: String): Future<Password?> {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 
-    override suspend fun findAll(): Future<List<Any>> {
+    override suspend fun findAll(paginationDTO: PaginationDTO): Future<PaginatedResult<Password>> {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 
-    override suspend fun update(id: String, dto: DTO): Future<Any> {
+    override suspend fun update(id: String, dto: DTO): Future<Password> {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 
-    override suspend fun remove(id: String): Future<Boolean> {
+    override suspend fun remove(id: String): Future<Password> {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
 }

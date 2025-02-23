@@ -4,10 +4,19 @@ CREATE TABLE IF NOT EXISTS rooms (
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     creator_id VARCHAR NOT NULL REFERENCES users (id),
     avatar_id VARCHAR REFERENCES media (id),
+    canonical_alias VARCHAR,
+    guest_access VARCHAR(10),
     is_direct BOOLEAN NOT NULL DEFAULT FALSE,
+    join_rule VARCHAR,
+    name VARCHAR,
+    num_joined_members INTEGER NOT NULL DEFAULT 0,
     type VARCHAR,
+    topic VARCHAR,
     version VARCHAR(5) NOT NULL DEFAULT '11',
     visibility VARCHAR(10) NOT NULL DEFAULT 'private',
+    history_visibility VARCHAR DEFAULT 'joined',
+    CONSTRAINT check_room_guest_access_type CHECK(guest_access IN('can_join', 'forbidden')),
+    CONSTRAINT check_room_history_visibility_type CHECK(history_visibility IN('invited', 'joined', 'shared', 'world_readable')),
     CONSTRAINT check_room_visibility_type CHECK(visibility IN('private', 'public'))
 );
 

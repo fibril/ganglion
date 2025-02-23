@@ -20,7 +20,7 @@ class MediaRepositoryImpl @Inject constructor(private val database: PGDatabase) 
         TODO("Not yet implemented")
     }
 
-    override suspend fun findAll(): List<Media> {
+    override suspend fun findAll(query: String): List<Media> {
         TODO("Not yet implemented")
     }
 

@@ -6,10 +6,13 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
+import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.CreateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEvent
 import io.vertx.core.Future
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
 import io.vertx.pgclient.PgException
 import kotlinx.coroutines.future.await
 
@@ -79,14 +82,39 @@ class RoomEventServiceImpl @Inject constructor(
 
 
     override suspend fun findOne(id: String): Future<RoomEvent?> {
-        TODO("Not yet implemented")
+        val roomEvent = try {
+            roomEventRepository.find(id)
+        } catch (e: PgException) {
+            return Future.failedFuture(RequestException.fromPgException(e))
+        }
+        return Future.succeededFuture(roomEvent)
     }
 
-    override suspend fun findAll(): Future<List<RoomEvent>> {
+    override suspend fun findAll(paginationDTO: PaginationDTO): Future<PaginatedResult<RoomEvent>> {
         TODO("Not yet implemented")
     }
 
     override suspend fun update(id: String, dto: DTO): Future<RoomEvent> {
+        val targetEvent = findOne(id).toCompletionStage().await()
+        val canUpdateMembershipEvent = canUpdateMembershipField(dto, targetEvent)
+        if (!canUpdateMembershipEvent) return Future.failedFuture(
+            RequestException(
+                403,
+                "",
+                StandardErrorResponse(
+                    ErrorCodes.M_FORBIDDEN,
+                    "Cannot transition membership ${
+                        JsonObject(
+                            targetEvent?.asJson()?.getString("content") ?: JsonObject().toString()
+                        ).getString("membership")
+                    } to ${
+                        JsonObject(
+                            dto?.params()?.getString("content") ?: JsonObject().toString()
+                        ).getString("membership")
+                    }"
+                ).asJson()
+            )
+        )
         val roomEvent = try {
             roomEventRepository.update(id, dto)
         } catch (e: PgException) {
@@ -102,8 +130,21 @@ class RoomEventServiceImpl @Inject constructor(
         return Future.succeededFuture(roomEvent)
     }
 
-    override suspend fun remove(id: String): Future<Boolean> {
-        TODO("Not yet implemented")
+    override suspend fun remove(id: String): Future<RoomEvent> {
+        val deletedRoomEvent = try {
+            roomEventRepository.delete(id)
+        } catch (e: PgException) {
+            return Future.failedFuture(RequestException.fromPgException(e))
+        }
+        if (deletedRoomEvent != null) return Future.succeededFuture(deletedRoomEvent)
+        return Future.failedFuture(
+            RequestException(
+                500,
+                "Unknown Error",
+                StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+            )
+        )
+
     }
 
 
@@ -149,5 +190,28 @@ class RoomEventServiceImpl @Inject constructor(
                 "state_key" to RoomEventUtils.EVENT_ONE_OF_EACH_STATE_KEY
             )
         ).toCompletionStage().await()?.firstOrNull()
+
+
+    private fun canUpdateMembershipField(updateDTO: DTO, targetEvent: RoomEvent?): Boolean {
+        if (targetEvent == null) return true
+
+        val currentMembership =
+            RoomMembership.mapNameToMembershipState.getOrDefault(
+                JsonObject(
+                    targetEvent.asJson().getString("content") ?: JsonObject().toString()
+                ).getString("membership"), null
+            )
+        if (currentMembership == null) return true
+
+        val newMembership = RoomMembership.mapNameToMembershipState.getOrDefault(
+            JsonObject(
+                updateDTO.params().getString("content") ?: JsonObject().toString()
+            ).getString("membership"), null
+        ) ?: return false
+
+        if (currentMembership == newMembership) return true
+
+        return RoomMembership.transitionGraph hasPathFrom (currentMembership) to newMembership
+    }
 
 }

@@ -63,7 +63,7 @@ class UserProfileRepositoryImpl @Inject constructor(private val database: PGData
         return profile
     }
 
-    override suspend fun findAll(): List<UserProfile> {
+    override suspend fun findAll(query: String): List<UserProfile> {
         TODO("Not yet implemented")
     }
 
