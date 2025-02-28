@@ -4,6 +4,7 @@ import com.google.inject.Guice
 import io.fibril.ganglion.app.verticles.AuthWorkerVerticle
 import io.fibril.ganglion.app.verticles.MigrationWorkerVerticle
 import io.fibril.ganglion.app.verticles.RoomEventsWorkerVerticle
+import io.fibril.ganglion.app.verticles.UserWorkerVerticle
 import io.fibril.ganglion.clientServer.ClientModule
 import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.v1.RoutesV1
@@ -57,7 +58,7 @@ class MainVerticle : CoroutineVerticle() {
                     }
             } else {
                 // block
-                
+
             }
         }
 
@@ -91,5 +92,9 @@ class MainVerticle : CoroutineVerticle() {
             .andThen {
                 vertx.deployVerticle(AuthWorkerVerticle::class.java, AuthWorkerVerticle.deploymentOptions)
             }
+            .andThen {
+                vertx.deployVerticle(UserWorkerVerticle::class.java, UserWorkerVerticle.deploymentOptions)
+            }
+
     }
 }

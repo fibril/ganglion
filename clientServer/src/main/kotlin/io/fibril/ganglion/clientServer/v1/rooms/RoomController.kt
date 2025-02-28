@@ -10,7 +10,6 @@ import io.fibril.ganglion.clientServer.extensions.authenticatedRoute
 import io.fibril.ganglion.clientServer.extensions.only
 import io.fibril.ganglion.clientServer.extensions.useDTOValidation
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
-import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.utils.rateLimiters.RoomRequestRateLimiter
 import io.fibril.ganglion.clientServer.v1.authentication.RoleType
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.*
@@ -94,6 +93,10 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
             .handler(::updateRoomVisibility)
 
         router.get(GET_PUBLIC_ROOMS_PATH).handler(::getPublicRooms)
+        router.post(GET_PUBLIC_ROOMS_PATH)
+            .useDTOValidation(ListPublicRoomsDTO::class.java)
+            .authenticatedRoute(RoleType.USER)
+            .handler(::getPublicRooms)
 
         return router
     }
@@ -342,8 +345,8 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
                 for (entry in routingContext.queryParams()) {
                     put(entry.key, entry.value)
                 }
-            }
-            val dto = PaginationDTO(json)
+            }.mergeIn(routingContext.body()?.asJsonObject() ?: JsonObject())
+            val dto = ListPublicRoomsDTO(json)
             roomService.findAll(dto)
                 .onSuccess {
                     routingContext.end(it.asJson().toString())

@@ -92,7 +92,32 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
     }
 
     override suspend fun find(id: String): RoomEvent? {
-        TODO("Not yet implemented")
+        val client = database.client()
+        val result: Promise<JsonObject?> = Promise.promise()
+
+        client.preparedQuery(FIND_ROOM_EVENT_QUERY).execute(Tuple.of(id)).onSuccess { res ->
+            run {
+                try {
+                    result.complete(res.first().toJson())
+                } catch (e: NoSuchElementException) {
+                    result.complete(null)
+                }
+            }
+        }
+            .onFailure { err ->
+                run {
+                    throw PgException(
+                        err.message,
+                        "SEVERE",
+                        "500",
+                        err.message
+                    )
+                }
+            }
+
+        val resPayload = result.future().toCompletionStage().await() ?: return null
+
+        return RoomEvent(resPayload)
     }
 
 
@@ -220,6 +245,7 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
     companion object {
         val CREATE_ROOM_EVENT_QUERY = ResourceBundleConstants.roomEventQueries.getString("createRoomEvent")
         val DELETE_ROOM_EVENT_QUERY = ResourceBundleConstants.roomEventQueries.getString("deleteRoomEvent")
+        val FIND_ROOM_EVENT_QUERY = ResourceBundleConstants.roomEventQueries.getString("findRoomEvent")
     }
 
 

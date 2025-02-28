@@ -6,22 +6,24 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.utils.pagination.KeySetPagination
 import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
 import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.fibril.ganglion.clientServer.v1.users.models.UserProfile
 import io.vertx.core.Future
 import io.vertx.pgclient.PgException
+import kotlinx.coroutines.future.await
 
 
 interface UserProfileService : Service<UserProfile> {
-    suspend fun findOneByUserId(userId: MatrixUserId): Future<UserProfile>
-
+    suspend fun findOneByUserId(userId: MatrixUserId): Future<UserProfile?>
+    suspend fun userDirectorySearch(paginationDTO: PaginationDTO): Future<PaginatedResult<UserProfile>>
+    suspend fun updateUserProfileByUserId(userId: MatrixUserId, updateUserProfileDTO: DTO): Future<UserProfile>
 }
 
 class UserProfileServiceImpl @Inject constructor(
-    private val repository: UserProfileRepositoryImpl,
-    private val userServiceImpl: UserServiceImpl
+    private val userProfileRepository: UserProfileRepositoryImpl
 ) :
     UserProfileService {
     override val identifier = IDENTIFIER
@@ -38,9 +40,9 @@ class UserProfileServiceImpl @Inject constructor(
         TODO()
     }
 
-    override suspend fun findOneByUserId(userId: MatrixUserId): Future<UserProfile> {
+    override suspend fun findOneByUserId(userId: MatrixUserId): Future<UserProfile?> {
         val userProfile = try {
-            repository.findByUserId(userId.toString())
+            userProfileRepository.findByUserId(userId.toString())
         } catch (e: PgException) {
             return Future.failedFuture(
                 RequestException(
@@ -54,12 +56,47 @@ class UserProfileServiceImpl @Inject constructor(
         return Future.succeededFuture(userProfile)
     }
 
-    override suspend fun update(id: String, updateUserDTO: DTO): Future<UserProfile> {
-        TODO("Not yet implemented")
+    override suspend fun update(id: String, dto: DTO): Future<UserProfile> {
+        val userProfile = try {
+            userProfileRepository.update(id, dto)
+        } catch (e: PgException) {
+            return Future.failedFuture(
+                RequestException(
+                    500,
+                    e.message ?: "Unknown Exception",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                )
+            )
+        }
+
+        return Future.succeededFuture(userProfile)
     }
 
     override suspend fun remove(id: String): Future<UserProfile> {
         TODO("Not yet implemented")
+    }
+
+
+    override suspend fun userDirectorySearch(paginationDTO: PaginationDTO): Future<PaginatedResult<UserProfile>> {
+        val keySetPagination = KeySetPagination(paginationDTO)
+        val results = try {
+            userProfileRepository.findAll(keySetPagination.prepareQuery(UserProfileRepositoryImpl.USER_DIRECTORY_SEARCH_QUERY))
+        } catch (e: PgException) {
+            return Future.failedFuture(RequestException.fromPgException(e))
+        }
+        val paginatedResult = keySetPagination.usingQueryResult<UserProfile>(results).paginatedResult
+        return Future.succeededFuture(paginatedResult)
+    }
+
+    override suspend fun updateUserProfileByUserId(
+        userId: MatrixUserId,
+        updateUserProfileDTO: DTO
+    ): Future<UserProfile> {
+        val userProfile = findOneByUserId(userId).toCompletionStage().await() ?: return Future.failedFuture(
+            RequestException(404, "User Not found", StandardErrorResponse(ErrorCodes.M_NOT_FOUND).asJson())
+        )
+        val profileId = userProfile.id
+        return update(profileId, updateUserProfileDTO)
     }
 
     companion object {

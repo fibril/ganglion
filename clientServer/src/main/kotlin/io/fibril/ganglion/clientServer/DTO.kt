@@ -25,14 +25,34 @@ abstract class DTO(private val json: JsonObject) {
     /**
      * A set of params that can be saved to the database
      */
-    abstract val permittedParams: Set<String>
+    open val permittedParams: Set<String> = json.map.keys
 
     /**
      * Provide an alternative mapping of supplied parameter name to desired name.
      * For example, you can map a param named userId to user_id, this will replace
-     * the name of the param userId with user_id
+     * the name of the param userId with user_id when the params() function is called.
      */
-    abstract val paramNameTransformMapping: Map<String, String>
+    open val paramNameTransformMapping: Map<String, String> = mapOf()
+
+
+    /**
+     * Map a filter to a method that produces the filter's where clause statement.
+     * This should be defined for DTOs that pass filter parameters. The mapped method
+     * can be called to retrieve the where clause that can be appended to a query in order
+     * to apply said filter to the query.
+     *
+     * Example usage
+     * ```
+     * mapOf("type" to (value: String) = "room_type = $value" )
+     *
+     * // this can then be applied as:
+     *
+     * val params = params()
+     * val type = params.getString("type")
+     * val query = "SELECT * FROM rooms WHERE ${filterWhereClauseGeneratorMap["type"].invoke(type)}"
+     * ```
+     */
+    open val filterWhereClauseGeneratorMap: Map<String, (value: Any) -> String>? = mapOf()
 
     abstract fun validate(): DTOValidationResult
 

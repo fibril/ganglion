@@ -25,28 +25,43 @@ class KeySetPagination(val paginationDTO: PaginationDTO) {
 
 
     fun prepareQuery(query: String): String {
+        println("params $params")
         val orderBy = params.getString("orderBy") ?: DEFAULT_ORDER_BY
         val map = mutableMapOf("orderBy" to orderBy)
         // increase the limit by 1. If we get the entire limit as count of objects in dbResult, it means
         // that there must be next page
         map.put("limit", ((params.getString("limit")?.toInt() ?: DEFAULT_LIMIT) + 1).toString())
 
-        val where =
+        val where = StringBuilder("").apply {
             if (params.getString(PaginationDTO.CURRENT_TOKEN_KEY) != null && params.getString(PaginationDTO.END_TOKEN_KEY) != null) {
                 val startId = decodePaginationToken(params.getString(PaginationDTO.CURRENT_TOKEN_KEY))
                 val endId = decodePaginationToken(params.getString(PaginationDTO.END_TOKEN_KEY))
-                """
-                id ${if (orderBy == "DESC") "<=" else ">="} '${startId}' AND id < '${endId}'
-            """.trimIndent()
+                append(
+                    """id ${if (orderBy == "DESC") "<=" else ">="} '${startId}' AND id < '${endId}'""".trimIndent()
+                )
             } else if (params.getString(PaginationDTO.CURRENT_TOKEN_KEY) != null) {
                 val startId = decodePaginationToken(params.getString(PaginationDTO.CURRENT_TOKEN_KEY))
                 println(startId)
-                """
-                id ${if (orderBy == "DESC") "<=" else ">="} '${startId}'
-            """.trimIndent()
-            } else "TRUE"
+                append("""id ${if (orderBy == "DESC") "<=" else ">="} '${startId}'""".trimIndent())
+            } else append("TRUE")
 
-        map.put("where", where)
+            // append filters
+            val filterWhereClauseGeneratorMap = paginationDTO.filterWhereClauseGeneratorMap
+            val definedFiltersKeys = filterWhereClauseGeneratorMap?.keys ?: listOf()
+            val filter = params.getString("filter")
+            if (filter?.startsWith('{') == true) {
+                val filterParams = JsonObject(filter)
+                for (definedFilterKey in definedFiltersKeys) {
+                    val value = filterParams.getValue(definedFilterKey)
+                    if (value != null) {
+                        if (this.isNotEmpty()) append(" AND ")
+                        append("(" + filterWhereClauseGeneratorMap!![definedFilterKey]!!.invoke(value) + ")")
+                    }
+                }
+            }
+        }
+
+        map.put("where", where.toString())
 
         return QueryUtils.prepareQueryFromMap(query, map)
     }

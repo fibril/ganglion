@@ -51,6 +51,8 @@ class AuthServiceImpl @Inject constructor(
             )
         )
 
+        println("loginType $loginType")
+
         if (!AuthController.supportedLoginTypes.contains(loginType)) {
             return Future.failedFuture(
                 RequestException(
@@ -61,9 +63,21 @@ class AuthServiceImpl @Inject constructor(
             )
         }
 
+        println("loginType $loginType 2")
+
         val domain = ResourceBundle.getBundle("application").getString("domain")
         val username = params.getJsonObject("identifier").getString("user")
-        val matrixUserId = MatrixUserId(username, domain)
+        val matrixUserId = try {
+            MatrixUserId(username, domain)
+        } catch (e: IllegalStateException) {
+            return Future.failedFuture(
+                RequestException(
+                    statusCode = 403,
+                    "User does not exist",
+                    StandardErrorResponse(ErrorCodes.M_FORBIDDEN, error = "Invalid User").asJson()
+                )
+            )
+        }
         val user = userRepository.find(matrixUserId.toString())
             ?: return Future.failedFuture(
                 RequestException(
@@ -72,6 +86,8 @@ class AuthServiceImpl @Inject constructor(
                     StandardErrorResponse(ErrorCodes.M_FORBIDDEN, error = "User does not exist").asJson()
                 )
             )
+
+        println("user ${user.asJson()}")
 
         val password =
             authRepository.findPassword(user.asJson().getString("password_id"))

@@ -113,7 +113,14 @@ class UserRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         val result: Promise<JsonObject?> = Promise.promise()
         client.preparedQuery(FIND_USER_QUERY).execute(Tuple.of(id))
             .eventually { v -> client.close() }
-            .onFailure { err -> throw err }
+            .onFailure { err ->
+                throw PgException(
+                    err.message,
+                    "SEVERE",
+                    "500",
+                    err.message
+                )
+            }
             .onSuccess { res ->
                 run {
                     try {

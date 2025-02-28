@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION create_user_profile() RETURNS TRIGGER AS $cup$
     BEGIN
-       INSERT INTO user_profiles (user_id) VALUES (NEW.id);
+       INSERT INTO user_profiles (user_id, display_name) VALUES (NEW.id, substring(NEW.id FROM '@([a-zA-Z0-9_\-./]+):'));
        return NEW;
     END;
 $cup$ language plpgsql;

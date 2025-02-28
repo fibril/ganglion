@@ -10,7 +10,7 @@ import io.vertx.json.schema.common.dsl.Keywords
 import io.vertx.json.schema.common.dsl.Schemas
 
 
-class PaginationDTO @Inject constructor(val json: JsonObject, override val sender: User? = null) :
+open class PaginationDTO @Inject constructor(open val json: JsonObject, override val sender: User? = null) :
     DTO(json) {
 
     override val schema: JsonSchema =

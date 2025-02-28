@@ -2,9 +2,9 @@ package io.fibril.ganglion.clientServer.v1.authentication
 
 import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.Controller
-import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.extensions.addRequestRateLimiter
+import io.fibril.ganglion.clientServer.extensions.useDTOValidation
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
 import io.fibril.ganglion.clientServer.utils.rateLimiters.AuthenticationRequestRateLimiter
 import io.fibril.ganglion.clientServer.v1.authentication.dtos.LoginDTO
@@ -23,6 +23,7 @@ internal class AuthController @Inject constructor(vertx: Vertx, private val auth
 
         router.post(LOGIN_PATH)
             .addRequestRateLimiter(AuthenticationRequestRateLimiter.getInstance())
+            .useDTOValidation(LoginDTO::class.java)
             .handler(::login)
 
         return router
@@ -33,22 +34,21 @@ internal class AuthController @Inject constructor(vertx: Vertx, private val auth
     }
 
     private fun login(routingContext: RoutingContext) {
-        val loginDTO = LoginDTO(routingContext.body().asJsonObject())
-        DTO.Helpers.useDTOValidation(loginDTO, routingContext) {
-            CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
-                authService.login(loginDTO)
-                    .onSuccess { json ->
-                        routingContext.end(
-                            json.toString()
-                        )
-                    }
-                    .onFailure {
-                        val err = it as RequestException
-                        routingContext.response().setStatusCode(err.statusCode)
-                        routingContext.end(err.json.toString())
-                    }
-            }
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val loginDTO = LoginDTO(routingContext.body().asJsonObject())
+            authService.login(loginDTO)
+                .onSuccess { json ->
+                    routingContext.end(
+                        json.toString()
+                    )
+                }
+                .onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
         }
+
     }
 
     companion object {

@@ -8,11 +8,15 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.extensions.exclude
+import io.fibril.ganglion.clientServer.extensions.only
 import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
 import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.authentication.models.AuthDatabaseActions
+import io.fibril.ganglion.clientServer.v1.users.dtos.UsersDirectorySearchDTO
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.fibril.ganglion.clientServer.v1.users.models.User
+import io.fibril.ganglion.clientServer.v1.users.models.UserProfile
 import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
 import io.vertx.sqlclient.DatabaseException
@@ -21,9 +25,11 @@ import java.util.*
 
 interface UserService : Service<User> {
     suspend fun isMatrixUserIdAvailable(matrixUserId: MatrixUserId): Boolean
+    suspend fun userDirectorySearch(paginationDTO: PaginationDTO): Future<PaginatedResult<UserProfile>>
 }
 
 class UserServiceImpl @Inject constructor(
+    private val userProfileService: UserProfileServiceImpl,
     private val userRepository: UserRepositoryImpl,
     private val jwtAuthProvider: GanglionJWTAuthProviderImpl
 ) : UserService {
@@ -31,6 +37,16 @@ class UserServiceImpl @Inject constructor(
 
     override suspend fun isMatrixUserIdAvailable(matrixUserId: MatrixUserId): Boolean {
         return userRepository.find(matrixUserId.toString()) == null
+    }
+
+    override suspend fun userDirectorySearch(paginationDTO: PaginationDTO): Future<PaginatedResult<UserProfile>> {
+        val params = paginationDTO.params()
+        val userDirectorySearchDTO = UsersDirectorySearchDTO(
+            json = params.copy()
+                .exclude("search_term")
+                .put("filter", params.only("search_term", "limit"))
+        )
+        return userProfileService.userDirectorySearch(userDirectorySearchDTO)
     }
 
 

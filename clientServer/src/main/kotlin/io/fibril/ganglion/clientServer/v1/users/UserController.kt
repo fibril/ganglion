@@ -6,10 +6,17 @@ import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.extensions.addRequestRateLimiter
+import io.fibril.ganglion.clientServer.extensions.authenticatedRoute
 import io.fibril.ganglion.clientServer.extensions.only
+import io.fibril.ganglion.clientServer.extensions.useDTOValidation
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
+import io.fibril.ganglion.clientServer.utils.rateLimiters.UsersRequestRateLimiter
+import io.fibril.ganglion.clientServer.v1.authentication.RoleType
 import io.fibril.ganglion.clientServer.v1.users.dtos.CreateUserDTO
+import io.fibril.ganglion.clientServer.v1.users.dtos.UsersDirectorySearchDTO
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
@@ -19,7 +26,11 @@ internal class UserController @Inject constructor(vertx: Vertx, val userService:
         router.route().handler(BodyHandler.create())
         router.post(REGISTER_PATH).handler(::registerUser)
 
-        router.post(USER_DIRECTORY_SEARCH_PATH).handler(::handleUserDirectorySearch)
+        router.post(USER_DIRECTORY_SEARCH_PATH)
+            .addRequestRateLimiter(UsersRequestRateLimiter.getInstance())
+            .useDTOValidation(UsersDirectorySearchDTO::class.java)
+            .authenticatedRoute(RoleType.USER)
+            .handler(::handleUserDirectorySearch)
         return router
     }
 
@@ -52,8 +63,24 @@ internal class UserController @Inject constructor(vertx: Vertx, val userService:
 
     private fun handleUserDirectorySearch(routingContext: RoutingContext) {
         CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
-
+            val json = JsonObject().apply {
+                for (entry in routingContext.queryParams()) {
+                    put(entry.key, entry.value)
+                }
+            }.mergeIn(routingContext.body()?.asJsonObject() ?: JsonObject())
+            val dto = UsersDirectorySearchDTO(json)
+            userService.userDirectorySearch(dto)
+                .onSuccess {
+                    val results = it.chunk.map { it.asJson().only("avatar_url", "display_name", "user_id") }
+                    val limited = it.next_batch != null
+                    routingContext.end(JsonObject.of("results", results, "limited", limited).toString())
+                }.onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
         }
+
     }
 
     companion object {
