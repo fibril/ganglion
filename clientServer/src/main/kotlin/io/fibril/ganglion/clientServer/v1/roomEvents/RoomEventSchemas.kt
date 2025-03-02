@@ -1,7 +1,11 @@
 package io.fibril.ganglion.clientServer.v1.roomEvents
 
+import io.fibril.ganglion.clientServer.v1.media.models.MediaUri
+import io.fibril.ganglion.clientServer.v1.roomEvents.models.RoomEventId
+import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAliasId
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomId
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
+import io.vertx.json.schema.common.dsl.Keywords
 import io.vertx.json.schema.common.dsl.ObjectSchemaBuilder
 import io.vertx.json.schema.common.dsl.SchemaBuilder
 import io.vertx.json.schema.common.dsl.Schemas
@@ -51,36 +55,149 @@ object RoomEventSchemas {
 
         val MESSAGE_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
+                .requiredProperty(
+                    "msgtype", Schemas.stringSchema().with(
+                        Keywords.pattern(
+                            Regex(
+                                """^("m.text"|"m.emote"|"m.notice"|"m.image"|"m.file"|"m.audio"|"m.video"|"m.location"|"m.key.verification.request")$"""
+                            ).toPattern()
+                        )
+                    )
+                )
+                .requiredProperty(
+                    "body", Schemas.stringSchema()
+                )
+                .optionalProperty("format", Schemas.stringSchema())
+                .optionalProperty("formatted_body", Schemas.stringSchema())
+                .optionalProperty("file", Schemas.stringSchema())
+                .optionalProperty("filename", Schemas.stringSchema())
+                .optionalProperty("url", MediaUri.createMediaUriStringSchema())
+                .optionalProperty("geo_uri", Schemas.stringSchema())
+                .optionalProperty(
+                    "info", Schemas.objectSchema()
+                        .optionalProperty("h", Schemas.intSchema())
+                        .optionalProperty("w", Schemas.intSchema())
+                        .optionalProperty("mimetype", Schemas.stringSchema())
+                        .optionalProperty("size", Schemas.intSchema())
+                        .optionalProperty("thumbnail_url", MediaUri.createMediaUriStringSchema())
+                        .optionalProperty("thumbnail_file", Schemas.stringSchema())
+                        .optionalProperty(
+                            "thumbnail_info", Schemas.objectSchema()
+                                .optionalProperty("h", Schemas.intSchema())
+                                .optionalProperty("w", Schemas.intSchema())
+                                .optionalProperty("mimetype", Schemas.stringSchema())
+                                .optionalProperty("size", Schemas.intSchema())
+                        )
+                        // AUDIO AND VIDEO INFO
+                        .optionalProperty("duration", Schemas.intSchema())
+
+                )
 
         val ALIASES_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
 
         val AVATAR_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
+                .optionalProperty("url", MediaUri.createMediaUriStringSchema())
+                .optionalProperty(
+                    "info", Schemas.objectSchema()
+                        .optionalProperty("h", Schemas.intSchema())
+                        .optionalProperty("w", Schemas.intSchema())
+                        .optionalProperty("mimetype", Schemas.stringSchema())
+                        .optionalProperty("size", Schemas.intSchema())
+                        .optionalProperty("thumbnail_url", MediaUri.createMediaUriStringSchema())
+                        .optionalProperty(
+                            "thumbnail_info", Schemas.objectSchema()
+                                .optionalProperty("h", Schemas.intSchema())
+                                .optionalProperty("w", Schemas.intSchema())
+                                .optionalProperty("mimetype", Schemas.stringSchema())
+                                .optionalProperty("size", Schemas.intSchema())
+                        )
+                )
 
         val CANONICAL_ALIAS_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
+                .requiredProperty("alias", RoomAliasId.createRoomAliasIdStringSchema())
+                .optionalProperty(
+                    "alt_aliases",
+                    Schemas.arraySchema().items(RoomAliasId.createRoomAliasIdStringSchema())
+                )
 
         val ENCRYPTION_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
 
         val GUEST_ACCESS_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
-            Schemas.objectSchema()
+            Schemas.objectSchema().requiredProperty(
+                "guest_access", Schemas.stringSchema().with(
+                    Keywords.pattern(Regex("""^(can_join|forbidden)$""").toPattern())
+                )
+            )
 
         val HISTORY_VISIBILITY_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
-            Schemas.objectSchema()
+            Schemas.objectSchema().requiredProperty(
+                "history_visibility", Schemas.stringSchema().with(
+                    Keywords.pattern(Regex("""^(invited|joined|shared|world_readable)$""").toPattern())
+                )
+            )
 
         val JOIN_RULES_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
+                .requiredProperty(
+                    "join_rule", Schemas.stringSchema().with(
+                        Keywords.pattern(
+                            Regex("""^(public|knock|invite|private|restricted|knock_restricted)$""").toPattern()
+                        )
+                    )
+                )
+                .optionalProperty(
+                    "allow",
+                    Schemas.arraySchema()
+                        .items(
+                            Schemas.objectSchema()
+                                .requiredProperty("room_id", RoomId.createRoomIdStringSchema())
+                                .requiredProperty(
+                                    "type", Schemas.stringSchema().with(
+                                        Keywords.pattern(
+                                            Regex("""^(m.room_membership)$""").toPattern()
+                                        )
+                                    )
+                                )
+                        )
+                )
 
         val MEMBER_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
+                .requiredProperty(
+                    "membership", Schemas.stringSchema().with(
+                        Keywords.pattern(
+                            Regex("""^(invite|join|knock|leave|ban)$""").toPattern()
+                        )
+                    )
+                )
+                .optionalProperty("avatar_url", MediaUri.createMediaUriStringSchema())
+                .optionalProperty("displayname", Schemas.stringSchema())
+                .optionalProperty("display_name", Schemas.stringSchema())
+                .optionalProperty("is_direct", Schemas.booleanSchema())
+                .optionalProperty("join_authorised_via_users_server", Schemas.stringSchema())
+                .optionalProperty("reason", Schemas.stringSchema())
+                .optionalProperty(
+                    "third_party_invite",
+                    Schemas.objectSchema()
+                        .requiredProperty("display_name", Schemas.stringSchema())
+                        .requiredProperty(
+                            "signed", Schemas.objectSchema()
+                                .requiredProperty("mxid", MatrixUserId.createMatrixUserIdStringSchema())
+                                .requiredProperty("token", Schemas.stringSchema())
+                                .requiredProperty("signatures", Schemas.objectSchema())
+                        )
+                )
 
         val NAME_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
-            Schemas.objectSchema()
+            Schemas.objectSchema().requiredProperty("name", Schemas.stringSchema())
 
         val PINNED_EVENTS_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
+                .requiredProperty("pinned", Schemas.arraySchema().items(RoomEventId.createRoomEventIdStringSchema()))
 
         val SERVER_ACL_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema()
@@ -89,7 +206,7 @@ object RoomEventSchemas {
             Schemas.objectSchema()
 
         val TOPIC_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
-            Schemas.objectSchema()
+            Schemas.objectSchema().requiredProperty("topic", Schemas.stringSchema())
     }
 }
 

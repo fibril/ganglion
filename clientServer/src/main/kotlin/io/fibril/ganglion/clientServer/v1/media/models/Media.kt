@@ -46,11 +46,7 @@ data class Media @Inject constructor(
 
     override fun asJson() = JsonObject().put("id", id).mergeIn(fullJsonObject ?: JsonObject())
 
-    companion object {
-        const val MATRIX_CONTENT_PROTOCOL = "mxc://"
-    }
-
     private val domain = ResourceBundle.getBundle("application").getString("domain")
 
-    val uri = MATRIX_CONTENT_PROTOCOL + domain + "/" + id
+    val uri = MediaUri(id, domain).toString()
 }
