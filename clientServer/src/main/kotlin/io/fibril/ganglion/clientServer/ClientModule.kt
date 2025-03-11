@@ -16,6 +16,8 @@ import io.fibril.ganglion.clientServer.v1.media.MediaService
 import io.fibril.ganglion.clientServer.v1.media.MediaServiceImpl
 import io.fibril.ganglion.clientServer.v1.media.models.Media
 import io.fibril.ganglion.clientServer.v1.media.models.MediaModel
+import io.fibril.ganglion.clientServer.v1.presence.PresenceService
+import io.fibril.ganglion.clientServer.v1.presence.PresenceServiceImpl
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventRepository
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventRepositoryImpl
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
@@ -32,6 +34,7 @@ import io.fibril.ganglion.clientServer.v1.users.models.User
 import io.fibril.ganglion.clientServer.v1.users.models.UserModel
 import io.fibril.ganglion.clientServer.v1.users.models.UserProfile
 import io.fibril.ganglion.clientServer.v1.users.models.UserProfileModel
+import io.fibril.ganglion.storage.impl.GanglionRedisClient
 import io.fibril.ganglion.storage.impl.PGDatabase
 import io.vertx.core.Vertx
 
@@ -79,10 +82,17 @@ class ClientModule(val vertx: Vertx) : AbstractModule() {
         bind(RoomEventModel::class.java).to(RoomEvent::class.java)
         bind(RoomEventService::class.java).to(RoomEventServiceImpl::class.java)
         bind(RoomEventRepository::class.java).to(RoomEventRepositoryImpl::class.java)
+
+        // Presence
+        bind(PresenceService::class.java).to(PresenceServiceImpl::class.java)
     }
 
     @Provides
     fun provideDatabase() = PGDatabase(vertx)
+
+
+    @Provides
+    fun provideRedisClient() = GanglionRedisClient(vertx)
 
     @Provides
     fun provideVertx() = vertx

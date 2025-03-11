@@ -1,15 +1,13 @@
 package io.fibril.ganglion.app
 
 import com.google.inject.Guice
-import io.fibril.ganglion.app.verticles.AuthWorkerVerticle
-import io.fibril.ganglion.app.verticles.MigrationWorkerVerticle
-import io.fibril.ganglion.app.verticles.RoomEventsWorkerVerticle
-import io.fibril.ganglion.app.verticles.UserWorkerVerticle
+import io.fibril.ganglion.app.verticles.*
 import io.fibril.ganglion.clientServer.ClientModule
 import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.v1.RoutesV1
 import io.fibril.ganglion.clientServer.v1.authentication.AuthService
 import io.fibril.ganglion.clientServer.v1.media.MediaService
+import io.fibril.ganglion.clientServer.v1.presence.PresenceService
 import io.fibril.ganglion.clientServer.v1.rooms.RoomAliasService
 import io.fibril.ganglion.clientServer.v1.rooms.RoomService
 import io.fibril.ganglion.clientServer.v1.users.UserProfileService
@@ -36,7 +34,8 @@ class MainVerticle : CoroutineVerticle() {
                     injector.getInstance(MediaService::class.java),
                     injector.getInstance(AuthService::class.java),
                     injector.getInstance(RoomService::class.java),
-                    injector.getInstance(RoomAliasService::class.java)
+                    injector.getInstance(RoomAliasService::class.java),
+                    injector.getInstance(PresenceService::class.java)
                 )
 
                 val servicesMap: Map<String, Service<*>> = mutableMapOf<String, Service<*>>().apply {
@@ -94,6 +93,9 @@ class MainVerticle : CoroutineVerticle() {
             }
             .andThen {
                 vertx.deployVerticle(UserWorkerVerticle::class.java, UserWorkerVerticle.deploymentOptions)
+            }
+            .andThen {
+                vertx.deployVerticle(PresenceWorkerVerticle::class.java, PresenceWorkerVerticle.deploymentOptions)
             }
 
     }

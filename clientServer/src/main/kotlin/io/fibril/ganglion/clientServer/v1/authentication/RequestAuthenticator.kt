@@ -3,6 +3,7 @@ package io.fibril.ganglion.clientServer.v1.authentication
 import io.fibril.ganglion.authentication.GanglionJWTAuthProviderImpl
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.v1.presence.PresenceActions
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.RoutingContext
 
@@ -10,6 +11,7 @@ import io.vertx.ext.web.RoutingContext
 object RequestAuthenticator {
     fun handleRequestAuthentication(routingContext: RoutingContext, minimumRoleType: RoleType) {
         val bearerToken = routingContext.request().headers().get("Authorization")
+        val vertx = routingContext.vertx()
 
         if (bearerToken == null) {
             routingContext.response()
@@ -22,13 +24,18 @@ object RequestAuthenticator {
             return
         }
 
-        GanglionJWTAuthProviderImpl(routingContext.vertx()).authenticate(
+        GanglionJWTAuthProviderImpl(vertx).authenticate(
             bearerToken
         ).onSuccess { vertxUser ->
             val role = vertxUser.principal().getString("role") ?: ""
             val roleType: RoleType? = RoleType.entries.find { roleType -> roleType.name.lowercase() == role }
             if (roleHasAbility(roleType, minimumRoleType)) {
                 routingContext.setUser(vertxUser)
+
+                // Notify that the user is ONLINE
+                val eventBus = vertx.eventBus()
+                eventBus.send(PresenceActions.USER_ONLINE, vertxUser.principal())
+
                 routingContext.next()
             } else {
                 routingContext.response()
