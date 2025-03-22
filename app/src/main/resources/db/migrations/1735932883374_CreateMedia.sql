@@ -5,10 +5,12 @@ CREATE TABLE IF NOT EXISTS media (
     user_id VARCHAR NOT NULL REFERENCES users (id),
     content_type VARCHAR(100),
     content_disposition VARCHAR(255),
-    preview_url VARCHAR,
+    content_transfer_encoding VARCHAR,
     media_type VARCHAR(100) NOT NULL,
     title VARCHAR(255),
-    description TEXT
+    description TEXT,
+    filename VARCHAR,
+    charset: VARCHAR
 );
 
 CREATE TRIGGER update_media_updated_at

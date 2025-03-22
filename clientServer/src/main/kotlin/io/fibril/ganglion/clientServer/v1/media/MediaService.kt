@@ -3,34 +3,100 @@ package io.fibril.ganglion.clientServer.v1.media
 import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Service
+import io.fibril.ganglion.clientServer.errors.ErrorCodes
+import io.fibril.ganglion.clientServer.errors.RequestException
+import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
 import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
 import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
+import io.fibril.ganglion.clientServer.v1.media.dtos.PutMediaDTO
+import io.fibril.ganglion.clientServer.v1.media.dtos.UploadMediaDTO
 import io.fibril.ganglion.clientServer.v1.media.models.Media
 import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.json.JsonObject
-import java.util.*
+import io.vertx.ext.web.FileUpload
+import io.vertx.pgclient.PgException
+import kotlinx.coroutines.future.await
 
 
 interface MediaService : Service<Media> {
     fun getMediaConfig(): JsonObject
+    suspend fun uploadMedia(fileUploads: List<FileUpload>, uploadMediaDTO: UploadMediaDTO): Future<List<Media>>
+    suspend fun updateMediaFileData(fileUpload: FileUpload, putMediaDTO: PutMediaDTO): Future<Media>
 }
 
 class MediaServiceImpl @Inject constructor(
-    private val repository: MediaRepositoryImpl,
-) :
-    MediaService {
+    private val mediaRepository: MediaRepositoryImpl,
+    private val mediaVersionService: MediaVersionService
+) : MediaService {
+
+    override val identifier = IDENTIFIER
+
+
     override fun getMediaConfig(): JsonObject {
         return JsonObject().put(
-            MAX_UPLOAD_SIZE_KEY, ResourceBundle.getBundle("application").getString(
+            MAX_UPLOAD_SIZE_KEY, ResourceBundleConstants.applicationBundle.getString(
                 MAX_UPLOAD_SIZE_KEY
             )
         )
     }
 
-    override val identifier = IDENTIFIER
+    override suspend fun uploadMedia(
+        fileUploads: List<FileUpload>,
+        uploadMediaDTO: UploadMediaDTO
+    ): Future<List<Media>> {
+        val savedMediaList = mutableListOf<Media>()
+        for (fileUpload in fileUploads) {
+            val media = try {
+                mediaRepository.save(uploadMediaDTO)
+            } catch (e: PgException) {
+                return Future.failedFuture(RequestException.fromPgException(e))
+            }
+            val mediaVersion =
+                mediaVersionService.saveOriginalMediaVersion(media.id, fileUpload).toCompletionStage().await()
+            if (mediaVersion != null) {
+                savedMediaList.add(media)
+            } else {
+                return Future.failedFuture(
+                    RequestException(
+                        500,
+                        "Failed to save file",
+                        StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                    )
+                )
+            }
+        }
+        return Future.succeededFuture(savedMediaList)
+    }
+
+    override suspend fun updateMediaFileData(
+        fileUpload: FileUpload,
+        putMediaDTO: PutMediaDTO
+    ): Future<Media> {
+        val mediaId = putMediaDTO.params().getString("mediaId")
+        val alreadyUpdated = contentAlreadyUploaded(mediaId)
+        if (alreadyUpdated) {
+            return Future.failedFuture(
+                RequestException(403, "Forbidden", StandardErrorResponse(ErrorCodes.M_FORBIDDEN).asJson())
+            )
+        }
+        update(putMediaDTO.json.getString("mediaId"), putMediaDTO).toCompletionStage().await()
+
+        return saveFileData(
+            mediaId,
+            fileUpload
+        )
+    }
+
 
     override suspend fun create(dto: DTO): Future<Media> {
-        TODO("Not yet implemented")
+        try {
+            val media = mediaRepository.save(dto)
+            return Future.succeededFuture(media)
+        } catch (pgException: PgException) {
+            return Future.failedFuture(RequestException.fromPgException(pgException))
+        }
     }
 
     override suspend fun findAll(paginationDTO: PaginationDTO): Future<PaginatedResult<Media>> {
@@ -38,15 +104,46 @@ class MediaServiceImpl @Inject constructor(
     }
 
     override suspend fun findOne(id: String): Future<Media?> {
-        TODO()
+        val media = try {
+            mediaRepository.find(id)
+        } catch (e: PgException) {
+            return Future.failedFuture(RequestException.fromPgException(e))
+        }
+        return Future.succeededFuture(media)
     }
 
     override suspend fun update(id: String, dto: DTO): Future<Media> {
-        TODO("Not yet implemented")
+        val media = try {
+            mediaRepository.update(id, dto)
+        } catch (e: PgException) {
+            return Future.failedFuture(
+                RequestException(
+                    500,
+                    e.message ?: "Unknown Exception",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                )
+            )
+        }
+        return Future.succeededFuture(media)
     }
 
     override suspend fun remove(id: String): Future<Media> {
         TODO("Not yet implemented")
+    }
+
+    private suspend fun contentAlreadyUploaded(id: String): Boolean {
+        val mediaVersions = mediaVersionService.findAllByMediaId(id).toCompletionStage().await()
+        return mediaVersions.isNotEmpty()
+    }
+
+    private suspend fun saveFileData(mediaId: String, fileUpload: FileUpload): Future<Media> {
+        val promise = Promise.promise<Media>()
+        mediaVersionService.saveOriginalMediaVersion(mediaId, fileUpload).onSuccess { mediaVersion ->
+            promise.complete(Media(mediaVersion.asJson().getString("media_id")))
+        }.onFailure { err ->
+            promise.fail(err)
+        }
+        return promise.future()
     }
 
     companion object {

@@ -3,11 +3,12 @@ CREATE TABLE IF NOT EXISTS media_versions (
     created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
     name VARCHAR(20) NOT NULL DEFAULT 'original',
-    file_data BYTEA NOT NULL,
     height SMALLINT,
     width  SMALLINT,
     animated BOOLEAN NOT NULL DEFAULT FALSE,
-
+    file_size BIGINT,
+    uploaded_filename VARCHAR,
+    remote_url VARCHAR,
     media_id varchar NOT NULL REFERENCES media (id) ON DELETE CASCADE,
 
     CONSTRAINT check_name_permitted CHECK(name IN(

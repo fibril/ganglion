@@ -65,9 +65,11 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
 
         router.route(PATH_PREFIX).subRouter(usersRouter)
         router.route(PATH_PREFIX).subRouter(userProfileRouter)
+
         router.route(PATH_PREFIX).subRouter(mediaRouter)
         // no path prefix
         router.route().subRouter(mediaCreationAndUploadRouter)
+
         router.route(PATH_PREFIX).subRouter(authControllerRouter)
 
         router.route(PATH_PREFIX).subRouter(roomControllerRouter)

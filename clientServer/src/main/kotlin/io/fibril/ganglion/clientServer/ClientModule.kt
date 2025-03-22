@@ -10,10 +10,7 @@ import io.fibril.ganglion.clientServer.v1.authentication.AuthServiceImpl
 import io.fibril.ganglion.clientServer.v1.authentication.models.Password
 import io.fibril.ganglion.clientServer.v1.authentication.models.PasswordModel
 import io.fibril.ganglion.clientServer.v1.devices.*
-import io.fibril.ganglion.clientServer.v1.media.MediaRepository
-import io.fibril.ganglion.clientServer.v1.media.MediaRepositoryImpl
-import io.fibril.ganglion.clientServer.v1.media.MediaService
-import io.fibril.ganglion.clientServer.v1.media.MediaServiceImpl
+import io.fibril.ganglion.clientServer.v1.media.*
 import io.fibril.ganglion.clientServer.v1.media.models.Media
 import io.fibril.ganglion.clientServer.v1.media.models.MediaModel
 import io.fibril.ganglion.clientServer.v1.presence.PresenceService
@@ -57,6 +54,9 @@ class ClientModule(val vertx: Vertx) : AbstractModule() {
         bind(MediaModel::class.java).to(Media::class.java)
         bind(MediaService::class.java).to(MediaServiceImpl::class.java)
         bind(MediaRepository::class.java).to(MediaRepositoryImpl::class.java)
+        // MediaVersion
+        bind(MediaVersionService::class.java).to(MediaVersionServiceImpl::class.java)
+        bind(MediaVersionRepository::class.java).to(MediaVersionRepositoryImpl::class.java)
 
         // User
         bind(UserModel::class.java).to(User::class.java)

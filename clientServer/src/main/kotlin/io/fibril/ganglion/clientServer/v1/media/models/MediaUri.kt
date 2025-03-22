@@ -25,4 +25,6 @@ data class MediaUri @Inject constructor(private val uri: String) {
     }
 
     override fun toString() = uri
+
+    val id = uri.substringAfterLast(':')
 }

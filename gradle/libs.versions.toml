@@ -7,6 +7,7 @@ junit = "5.11.4"
 guice = "7.0.0"
 jackson = "2.18.2"
 bcrypt = "0.3m"
+imgscalr = "4.2"
 
 [libraries]
 
@@ -34,6 +35,7 @@ resilience4j-ratelimiter = { group = "io.github.resilience4j", name = "resilienc
 resilience4j-kotlin = { group = "io.github.resilience4j", name = "resilience4j-kotlin", version.ref = "resilience4j" }
 jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 bcrypt = { group = "org.mindrot", name = "jbcrypt", version.ref = "bcrypt" }
+imgscalr = { group = "org.imgscalr", name = "imgscalr-lib", version.ref = "imgscalr" }
 
 ### TESTS
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }
