@@ -22,6 +22,7 @@ data class CreateMediaVersionDTO(val json: JsonObject, override val sender: Vert
             .optionalProperty("width", Schemas.intSchema())
             .optionalProperty("animated", Schemas.booleanSchema())
             .optionalProperty("file_size", Schemas.intSchema())
+            .optionalProperty("remote_url", Schemas.stringSchema())
             .toJson()
     )
 

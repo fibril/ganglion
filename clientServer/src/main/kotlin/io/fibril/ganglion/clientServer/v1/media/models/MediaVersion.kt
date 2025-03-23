@@ -3,40 +3,10 @@ package io.fibril.ganglion.clientServer.v1.media.models
 import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.Model
 import io.vertx.core.json.JsonObject
-import java.util.*
 
 
 interface MediaVersionModel : Model
 
-/**
- * id
- * message_id
- * user_id
- * content_type
- * content_disposition
- * preview_url
- * media_type
- * title
- * description
- *
- * [VERSIONS]
- *
- * id
- * name  [
- *  * original
- *  * crop32x32,
- *  * crop96x96,
- *  * scale320x240,
- *  * scale640x480,
- *  * scale800x600,
- *  * ]
- *
- * uri: external:// || local://
- * size
- * height
- * width
- * animated
- */
 data class MediaVersion @Inject constructor(
     val id: String,
     val fullJsonObject: JsonObject? = null
@@ -55,6 +25,27 @@ data class MediaVersion @Inject constructor(
             "scale640x480",
             "scale800x600"
         )
+
+        fun approximateVersionName(cropOrScale: String, height: Int): String {
+            if (cropOrScale != "crop" && cropOrScale != "scale") return "original"
+
+            println("cropOrScale $cropOrScale $height")
+
+            when (cropOrScale) {
+                "crop" -> {
+                    return if (height <= 32) "crop32x32"
+                    else "crop96x96"
+                }
+
+                "scale" -> {
+                    if (height <= 320) return "scale320x240"
+                    return if (height <= 640) "scale640x480"
+                    else "scale800x600"
+                }
+
+                else -> return "original"
+            }
+        }
 
         val versionNameRegex = Regex("""^(original|crop32x32|crop96x96|scale320x240|scale640x480|scale800x600)$""")
     }

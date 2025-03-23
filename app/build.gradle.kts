@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.vertx.kotlin.coroutines)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.guice)
+    implementation(libs.imgscalr)
     implementation(project(":storage"))
     implementation(project(":clientServer"))
     testImplementation(kotlin("test"))

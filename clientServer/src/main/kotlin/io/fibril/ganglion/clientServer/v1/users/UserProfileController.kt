@@ -18,10 +18,12 @@ import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.handler.BodyHandler
 
 internal class UserProfileController @Inject constructor(vertx: Vertx, val userProfileService: UserProfileService) :
     Controller(vertx) {
     override fun mountSubRoutes(): Router {
+        router.route().handler(BodyHandler.create())
 
         router.get(USER_PROFILE_PATH)
             .useDTOValidation(GetUserProfileDTO::class.java)

@@ -13,6 +13,8 @@ import io.fibril.ganglion.clientServer.v1.devices.*
 import io.fibril.ganglion.clientServer.v1.media.*
 import io.fibril.ganglion.clientServer.v1.media.models.Media
 import io.fibril.ganglion.clientServer.v1.media.models.MediaModel
+import io.fibril.ganglion.clientServer.v1.media.models.MediaVersion
+import io.fibril.ganglion.clientServer.v1.media.models.MediaVersionModel
 import io.fibril.ganglion.clientServer.v1.presence.PresenceService
 import io.fibril.ganglion.clientServer.v1.presence.PresenceServiceImpl
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventRepository
@@ -55,6 +57,7 @@ class ClientModule(val vertx: Vertx) : AbstractModule() {
         bind(MediaService::class.java).to(MediaServiceImpl::class.java)
         bind(MediaRepository::class.java).to(MediaRepositoryImpl::class.java)
         // MediaVersion
+        bind(MediaVersionModel::class.java).to(MediaVersion::class.java)
         bind(MediaVersionService::class.java).to(MediaVersionServiceImpl::class.java)
         bind(MediaVersionRepository::class.java).to(MediaVersionRepositoryImpl::class.java)
 

@@ -7,7 +7,7 @@ import io.vertx.json.schema.JsonSchema
 import io.vertx.json.schema.common.dsl.Schemas
 import io.vertx.ext.auth.User as VertxUser
 
-data class UploadMediaDTO(val json: JsonObject, override val sender: VertxUser) : DTO(json) {
+data class UploadMediaDTO(val json: JsonObject, override val sender: VertxUser?) : DTO(json) {
     override val schema: JsonSchema = JsonSchema.of(
         Schemas.objectSchema()
             .optionalProperty("Content-Type", Schemas.stringSchema())

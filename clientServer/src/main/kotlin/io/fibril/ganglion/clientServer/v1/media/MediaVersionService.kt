@@ -37,7 +37,7 @@ class MediaVersionServiceImpl @Inject constructor(
                 "media_id", mediaId,
                 "uploaded_filename", fileUpload.uploadedFileName(),
                 "name", "original",
-                "animated", fileUpload.contentType() == "image/gif",
+                "animated", setOf("image/gif", "image/apng", "image/webp").contains(fileUpload.contentType()),
                 "file_size", fileUpload.size(),
             ),
             null

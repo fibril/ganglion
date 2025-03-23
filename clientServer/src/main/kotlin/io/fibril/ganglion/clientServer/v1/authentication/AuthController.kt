@@ -13,10 +13,13 @@ import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.handler.BodyHandler
 
 internal class AuthController @Inject constructor(vertx: Vertx, private val authService: AuthService) :
     Controller(vertx) {
     override fun mountSubRoutes(): Router {
+        router.route().handler(BodyHandler.create())
+        
         router.get(GET_LOGIN_TYPES_PATH)
             .addRequestRateLimiter(AuthenticationRequestRateLimiter.getInstance())
             .handler(::getLoginTypes)

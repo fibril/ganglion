@@ -97,6 +97,9 @@ class MainVerticle : CoroutineVerticle() {
             .andThen {
                 vertx.deployVerticle(PresenceWorkerVerticle::class.java, PresenceWorkerVerticle.deploymentOptions)
             }
+            .andThen {
+                vertx.deployVerticle(MediaWorkerVerticle::class.java, MediaWorkerVerticle.deploymentOptions)
+            }
 
     }
 }

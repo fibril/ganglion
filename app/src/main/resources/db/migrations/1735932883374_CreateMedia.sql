@@ -6,11 +6,10 @@ CREATE TABLE IF NOT EXISTS media (
     content_type VARCHAR(100),
     content_disposition VARCHAR(255),
     content_transfer_encoding VARCHAR,
-    media_type VARCHAR(100) NOT NULL,
     title VARCHAR(255),
     description TEXT,
     filename VARCHAR,
-    charset: VARCHAR
+    charset VARCHAR
 );
 
 CREATE TRIGGER update_media_updated_at

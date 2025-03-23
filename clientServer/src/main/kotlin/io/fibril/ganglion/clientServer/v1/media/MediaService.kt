@@ -9,7 +9,9 @@ import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
 import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
 import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
+import io.fibril.ganglion.clientServer.v1.media.dtos.CreateMediaDTO
 import io.fibril.ganglion.clientServer.v1.media.dtos.PutMediaDTO
+import io.fibril.ganglion.clientServer.v1.media.dtos.UpdateMediaDTO
 import io.fibril.ganglion.clientServer.v1.media.dtos.UploadMediaDTO
 import io.fibril.ganglion.clientServer.v1.media.models.Media
 import io.vertx.core.Future
@@ -24,11 +26,12 @@ interface MediaService : Service<Media> {
     fun getMediaConfig(): JsonObject
     suspend fun uploadMedia(fileUploads: List<FileUpload>, uploadMediaDTO: UploadMediaDTO): Future<List<Media>>
     suspend fun updateMediaFileData(fileUpload: FileUpload, putMediaDTO: PutMediaDTO): Future<Media>
+    suspend fun findOneForVersion(id: String, versionName: String): Future<Media?>
 }
 
 class MediaServiceImpl @Inject constructor(
     private val mediaRepository: MediaRepositoryImpl,
-    private val mediaVersionService: MediaVersionService
+    private val mediaVersionService: MediaVersionServiceImpl
 ) : MediaService {
 
     override val identifier = IDENTIFIER
@@ -48,8 +51,20 @@ class MediaServiceImpl @Inject constructor(
     ): Future<List<Media>> {
         val savedMediaList = mutableListOf<Media>()
         for (fileUpload in fileUploads) {
+            val createMediaDTO = CreateMediaDTO(
+                JsonObject()
+                    .put("filename", fileUpload.name())
+                    .put("content_type", fileUpload.contentType())
+                    .put(
+                        "content_disposition",
+                        if (Media.INLINE_CONTENT_TYPE.contains(fileUpload.contentType())) "inline" else "attachment"
+                    )
+                    .put("charset", fileUpload.charSet())
+                    .put("content_transfer_encoding", fileUpload.contentTransferEncoding()),
+                uploadMediaDTO.sender
+            )
             val media = try {
-                mediaRepository.save(uploadMediaDTO)
+                mediaRepository.save(createMediaDTO)
             } catch (e: PgException) {
                 return Future.failedFuture(RequestException.fromPgException(e))
             }
@@ -81,7 +96,23 @@ class MediaServiceImpl @Inject constructor(
                 RequestException(403, "Forbidden", StandardErrorResponse(ErrorCodes.M_FORBIDDEN).asJson())
             )
         }
-        update(putMediaDTO.json.getString("mediaId"), putMediaDTO).toCompletionStage().await()
+
+        val updateMediaDTO = UpdateMediaDTO(
+            JsonObject()
+                .put("filename", fileUpload.name())
+                .put("content_type", fileUpload.contentType())
+                .put(
+                    "content_disposition",
+                    if (Media.INLINE_CONTENT_TYPE.contains(fileUpload.contentType())) "inline" else "attachment"
+                )
+                .put("charset", fileUpload.charSet())
+                .put("content_transfer_encoding", fileUpload.contentTransferEncoding())
+                .put("title", putMediaDTO.json.getString("title"))
+                .put("description", putMediaDTO.json.getString("description")),
+            putMediaDTO.sender
+        )
+
+        update(putMediaDTO.json.getString("mediaId"), updateMediaDTO).toCompletionStage().await()
 
         return saveFileData(
             mediaId,
@@ -112,6 +143,15 @@ class MediaServiceImpl @Inject constructor(
         return Future.succeededFuture(media)
     }
 
+    override suspend fun findOneForVersion(id: String, versionName: String): Future<Media?> {
+        val media = try {
+            mediaRepository.findOneForVersion(id, versionName)
+        } catch (e: PgException) {
+            return Future.failedFuture(RequestException.fromPgException(e))
+        }
+        return Future.succeededFuture(media)
+    }
+
     override suspend fun update(id: String, dto: DTO): Future<Media> {
         val media = try {
             mediaRepository.update(id, dto)
@@ -133,6 +173,10 @@ class MediaServiceImpl @Inject constructor(
 
     private suspend fun contentAlreadyUploaded(id: String): Boolean {
         val mediaVersions = mediaVersionService.findAllByMediaId(id).toCompletionStage().await()
+        println(mediaVersions.map { it.asJson() })
+        if (mediaVersions == null) {
+            return true
+        }
         return mediaVersions.isNotEmpty()
     }
 

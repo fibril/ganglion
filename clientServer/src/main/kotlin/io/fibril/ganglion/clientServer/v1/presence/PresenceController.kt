@@ -17,10 +17,14 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
+import io.vertx.ext.web.handler.BodyHandler
 
 internal class PresenceController @Inject constructor(vertx: Vertx, val presenceService: PresenceService) :
     Controller(vertx) {
     override fun mountSubRoutes(): Router {
+
+        router.route().handler(BodyHandler.create())
+        
         router.get(GET_USER_PRESENCE_PATH)
             .useDTOValidation(GetPresenceDTO::class.java)
             .authenticatedRoute(RoleType.USER)
