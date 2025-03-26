@@ -19,7 +19,7 @@ import io.vertx.core.file.OpenOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import kotlinx.coroutines.future.await
-import org.imgscalr.Scalr
+import net.coobird.thumbnailator.Thumbnails
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -159,26 +159,32 @@ class MediaWorkerVerticle : CoroutineVerticle() {
             var img: BufferedImage
             when (version) {
                 "crop32x32" -> {
-                    img = Scalr.resize(bufferedImage, 32, 32)
+                    val scaleFactor = (32.0 * 32) / (bufferedImage.width * bufferedImage.height)
+                    img = Thumbnails.of(bufferedImage).scale(scaleFactor).asBufferedImage()
                 }
 
                 "crop96x96" -> {
-                    img = Scalr.resize(bufferedImage, 96, 96)
+                    val scaleFactor = (96.0 * 96) / (bufferedImage.width * bufferedImage.height)
+                    img = Thumbnails.of(bufferedImage).scale(scaleFactor).asBufferedImage()
                 }
 
                 "scale320x240" -> {
-                    img = Scalr.resize(bufferedImage, 320, 240)
+                    val scaleFactor = (320.0 * 240) / (bufferedImage.width * bufferedImage.height)
+                    img = Thumbnails.of(bufferedImage).scale(scaleFactor).asBufferedImage()
                 }
 
                 "scale640x480" -> {
-                    img = Scalr.resize(bufferedImage, 640, 480)
+                    val scaleFactor = (640.0 * 480) / (bufferedImage.width * bufferedImage.height)
+                    img = Thumbnails.of(bufferedImage).scale(scaleFactor).asBufferedImage()
                 }
 
                 "scale800x600" -> {
-                    img = Scalr.resize(bufferedImage, 800, 600)
+                    val scaleFactor = (800.0 * 600) / (bufferedImage.width * bufferedImage.height)
+                    img = Thumbnails.of(bufferedImage).scale(scaleFactor).asBufferedImage()
                 }
 
-                else -> img = bufferedImage
+                else -> img =
+                    Thumbnails.of(bufferedImage).size(bufferedImage.width, bufferedImage.height).asBufferedImage()
             }
             result[version] = img
         }
