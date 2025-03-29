@@ -10,6 +10,7 @@ import io.fibril.ganglion.clientServer.v1.media.MediaService
 import io.fibril.ganglion.clientServer.v1.presence.PresenceService
 import io.fibril.ganglion.clientServer.v1.rooms.RoomAliasService
 import io.fibril.ganglion.clientServer.v1.rooms.RoomService
+import io.fibril.ganglion.clientServer.v1.typing.TypingService
 import io.fibril.ganglion.clientServer.v1.users.UserProfileService
 import io.fibril.ganglion.clientServer.v1.users.UserService
 import io.vertx.core.Future
@@ -35,7 +36,8 @@ class MainVerticle : CoroutineVerticle() {
                     injector.getInstance(AuthService::class.java),
                     injector.getInstance(RoomService::class.java),
                     injector.getInstance(RoomAliasService::class.java),
-                    injector.getInstance(PresenceService::class.java)
+                    injector.getInstance(PresenceService::class.java),
+                    injector.getInstance(TypingService::class.java)
                 )
 
                 val servicesMap: Map<String, Service<*>> = mutableMapOf<String, Service<*>>().apply {
@@ -99,6 +101,9 @@ class MainVerticle : CoroutineVerticle() {
             }
             .andThen {
                 vertx.deployVerticle(MediaWorkerVerticle::class.java, MediaWorkerVerticle.deploymentOptions)
+            }
+            .andThen {
+                vertx.deployVerticle(TypingWorkerVerticle::class.java, TypingWorkerVerticle.deploymentOptions)
             }
 
     }

@@ -12,6 +12,9 @@ import io.fibril.ganglion.clientServer.v1.presence.PresenceController
 import io.fibril.ganglion.clientServer.v1.presence.PresenceService
 import io.fibril.ganglion.clientServer.v1.presence.PresenceServiceImpl
 import io.fibril.ganglion.clientServer.v1.rooms.*
+import io.fibril.ganglion.clientServer.v1.typing.TypingController
+import io.fibril.ganglion.clientServer.v1.typing.TypingService
+import io.fibril.ganglion.clientServer.v1.typing.TypingServiceImpl
 import io.fibril.ganglion.clientServer.v1.users.*
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
@@ -59,6 +62,13 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
                 servicesMap[PresenceServiceImpl.IDENTIFIER] as PresenceService
             ).mountSubRoutes()
 
+        // TYPING
+        val typingController =
+            TypingController(
+                vertx,
+                servicesMap[TypingServiceImpl.IDENTIFIER] as TypingService
+            ).mountSubRoutes()
+
 
 
 
@@ -77,6 +87,8 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
         router.route(PATH_PREFIX).subRouter(roomAliasControllerRouter)
 
         router.route(PATH_PREFIX).subRouter(presenceControllerRouter)
+
+        router.route(PATH_PREFIX).subRouter(typingController)
 
     }
 

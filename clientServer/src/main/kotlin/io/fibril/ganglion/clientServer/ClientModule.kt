@@ -15,6 +15,8 @@ import io.fibril.ganglion.clientServer.v1.media.models.Media
 import io.fibril.ganglion.clientServer.v1.media.models.MediaModel
 import io.fibril.ganglion.clientServer.v1.media.models.MediaVersion
 import io.fibril.ganglion.clientServer.v1.media.models.MediaVersionModel
+import io.fibril.ganglion.clientServer.v1.presence.Presence
+import io.fibril.ganglion.clientServer.v1.presence.PresenceModel
 import io.fibril.ganglion.clientServer.v1.presence.PresenceService
 import io.fibril.ganglion.clientServer.v1.presence.PresenceServiceImpl
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventRepository
@@ -28,6 +30,10 @@ import io.fibril.ganglion.clientServer.v1.rooms.models.Room
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAliasModel
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomModel
+import io.fibril.ganglion.clientServer.v1.typing.Typing
+import io.fibril.ganglion.clientServer.v1.typing.TypingModel
+import io.fibril.ganglion.clientServer.v1.typing.TypingService
+import io.fibril.ganglion.clientServer.v1.typing.TypingServiceImpl
 import io.fibril.ganglion.clientServer.v1.users.*
 import io.fibril.ganglion.clientServer.v1.users.models.User
 import io.fibril.ganglion.clientServer.v1.users.models.UserModel
@@ -87,7 +93,12 @@ class ClientModule(val vertx: Vertx) : AbstractModule() {
         bind(RoomEventRepository::class.java).to(RoomEventRepositoryImpl::class.java)
 
         // Presence
+        bind(PresenceModel::class.java).to(Presence::class.java)
         bind(PresenceService::class.java).to(PresenceServiceImpl::class.java)
+
+        // Typing
+        bind(TypingModel::class.java).to(Typing::class.java)
+        bind(TypingService::class.java).to(TypingServiceImpl::class.java)
     }
 
     @Provides

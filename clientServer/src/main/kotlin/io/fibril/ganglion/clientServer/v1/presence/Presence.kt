@@ -6,8 +6,11 @@ import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.vertx.core.json.JsonObject
 import java.util.*
 
+interface PresenceModel : Model {
 
-data class Presence @Inject constructor(val userId: MatrixUserId, val contentJson: JsonObject) : Model {
+}
+
+data class Presence @Inject constructor(val userId: MatrixUserId, val contentJson: JsonObject) : PresenceModel {
     constructor(fullJsonObject: JsonObject) : this(
         MatrixUserId(fullJsonObject.getString("sender")),
         fullJsonObject.getJsonObject("content")
