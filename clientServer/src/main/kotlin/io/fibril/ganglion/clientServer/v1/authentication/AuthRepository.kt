@@ -4,6 +4,7 @@ import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Repository
 import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
+import io.fibril.ganglion.clientServer.v1.authentication.models.AuthToken
 import io.fibril.ganglion.clientServer.v1.authentication.models.Password
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.fibril.ganglion.storage.impl.PGDatabase
@@ -18,6 +19,7 @@ interface AuthRepository : Repository<Any> {
     suspend fun retrievePasswordForUser(matrixUserId: MatrixUserId): Password?
     suspend fun findPassword(id: String): Password?
     suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Boolean
+    suspend fun findAuthTokenByToken(token: String, tokenType: String): AuthToken?
 }
 
 class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) : AuthRepository {
@@ -79,6 +81,20 @@ class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         }
     }
 
+    override suspend fun findAuthTokenByToken(token: String, tokenType: String): AuthToken? {
+        val client = database.client()
+        val queryResult =
+            client.preparedQuery(FIND_AUTH_TOKEN_BY_TOKEN_QUERY).execute(Tuple.of(token, tokenType))
+                .eventually { _ -> client.close() }
+                .toCompletionStage().asDeferred()
+        val rowSet = queryResult.await()
+        return try {
+            return AuthToken(rowSet.first().toJson())
+        } catch (e: NoSuchElementException) {
+            null
+        }
+    }
+
     override suspend fun save(dto: DTO): Any {
         throw IllegalAccessException("Illegal access of stubbed function")
     }
@@ -104,5 +120,6 @@ class AuthRepositoryImpl @Inject constructor(private val database: PGDatabase) :
         val FETCH_PASSWORD_FOR_USER_QUERY = ResourceBundleConstants.authQueries.getString("fetchPasswordForUser")
         val FIND_PASSWORD_BY_ID_QUERY = ResourceBundleConstants.authQueries.getString("findPasswordById")
         val SAVE_GENERATED_TOKEN_QUERY = ResourceBundleConstants.authQueries.getString("saveGeneratedToken")
+        val FIND_AUTH_TOKEN_BY_TOKEN_QUERY = ResourceBundleConstants.authQueries.getString("findAuthTokenByToken")
     }
 }

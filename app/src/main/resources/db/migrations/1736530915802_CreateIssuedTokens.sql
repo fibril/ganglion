@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS issued_tokens (
 );
 
 CREATE INDEX issued_tokens_user_id_idx ON issued_tokens (user_id);
-CREATE INDEX issued_tokens_token_idx ON issued_tokens (token);
+CREATE INDEX issued_tokens_token_type_token_idx ON issued_tokens (token, token_type);
 
 CREATE TRIGGER update_issued_tokens_updated_at
     BEFORE UPDATE

@@ -12,6 +12,7 @@ import io.fibril.ganglion.clientServer.utils.Utils
 import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
 import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.authentication.dtos.LoginDTO
+import io.fibril.ganglion.clientServer.v1.authentication.dtos.RefreshDTO
 import io.fibril.ganglion.clientServer.v1.authentication.models.AuthDatabaseActions
 import io.fibril.ganglion.clientServer.v1.authentication.models.Password
 import io.fibril.ganglion.clientServer.v1.devices.DeviceRepository
@@ -20,11 +21,13 @@ import io.fibril.ganglion.clientServer.v1.users.UserRepository
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
+import kotlinx.coroutines.future.asDeferred
 import org.mindrot.jbcrypt.BCrypt
 import java.util.*
 
 interface AuthService : Service<Password> {
     suspend fun login(loginDTO: LoginDTO): Future<JsonObject>
+    suspend fun refresh(refreshDTO: RefreshDTO): Future<JsonObject>
     suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Future<Boolean>
 }
 
@@ -51,8 +54,6 @@ class AuthServiceImpl @Inject constructor(
             )
         )
 
-        println("loginType $loginType")
-
         if (!AuthController.supportedLoginTypes.contains(loginType)) {
             return Future.failedFuture(
                 RequestException(
@@ -62,8 +63,6 @@ class AuthServiceImpl @Inject constructor(
                 )
             )
         }
-
-        println("loginType $loginType 2")
 
         val domain = ResourceBundle.getBundle("application").getString("domain")
         val username = params.getJsonObject("identifier").getString("user")
@@ -86,8 +85,6 @@ class AuthServiceImpl @Inject constructor(
                     StandardErrorResponse(ErrorCodes.M_FORBIDDEN, error = "User does not exist").asJson()
                 )
             )
-
-        println("user ${user.asJson()}")
 
         val password =
             authRepository.findPassword(user.asJson().getString("password_id"))
@@ -151,7 +148,50 @@ class AuthServiceImpl @Inject constructor(
                 StandardErrorResponse(ErrorCodes.M_FORBIDDEN, error = "Login failed").asJson()
             )
         )
+    }
 
+    override suspend fun refresh(refreshDTO: RefreshDTO): Future<JsonObject> {
+        val params = refreshDTO.params()
+        val refreshToken = params.getString("token", "")
+        authRepository.findAuthTokenByToken(refreshToken, TokenType.REFRESH.name)
+            ?: return Future.failedFuture(
+                RequestException(
+                    statusCode = 401,
+                    "Unknown Refresh Token",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN_TOKEN, error = "Unknown Refresh Token").asJson()
+                )
+            )
+
+        val refreshTokenClaims =
+            ganglionJWTAuthProvider.authenticate(refreshToken).toCompletionStage().asDeferred().await()
+                ?: return Future.failedFuture(
+                    RequestException(
+                        statusCode = 401,
+                        "Unknown Refresh Token",
+                        StandardErrorResponse(ErrorCodes.M_UNKNOWN_TOKEN, error = "Unknown Refresh Token").asJson()
+                    )
+                )
+
+        val user = userRepository.find(refreshTokenClaims.subject())
+            ?: return Future.failedFuture(
+                RequestException(
+                    statusCode = 403,
+                    "User does not exist",
+                    StandardErrorResponse(ErrorCodes.M_FORBIDDEN, error = "User does not exist").asJson()
+                )
+            )
+        val tokenData = JsonObject.of("sub", user.id).put("role", user.asJson().getString("role"))
+        val accessToken = ganglionJWTAuthProvider.generateToken(
+            tokenData,
+            TokenType.ACCESS,
+            notificationChannelName = AuthDatabaseActions.TOKEN_CREATED
+        )
+
+        return Future.succeededFuture(
+            JsonObject()
+                .put("access_token", accessToken)
+                .put("refresh_token", refreshToken)
+        )
     }
 
     override suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Future<Boolean> {
