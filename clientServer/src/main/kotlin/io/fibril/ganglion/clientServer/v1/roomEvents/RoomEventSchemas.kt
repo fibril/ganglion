@@ -16,6 +16,16 @@ object RoomEventSchemas {
         .requiredProperty("type", Schemas.stringSchema())
         .optionalProperty("state_key", Schemas.stringSchema())
         .optionalProperty("room_id", RoomId.createRoomIdStringSchema())
+        .optionalProperty("transaction_id", Schemas.stringSchema())
+
+        // eventType is alias for type:- Mapped to type when we call params on the dto
+        .optionalProperty("eventType", Schemas.stringSchema())
+        // roomId is alias for room_id:- Mapped to room_id when we call params on the dto
+        .optionalProperty("roomId", RoomId.createRoomIdStringSchema())
+        // stateKey is alias for state_key:- Mapped to state_key when we call params on the dto
+        .optionalProperty("stateKey", Schemas.stringSchema())
+        //txnId is alias for transaction_id:- Mapped to transaction_id when we call params on the dto
+        .optionalProperty("txnId", Schemas.stringSchema())
 
 
     object ContentSchemas {

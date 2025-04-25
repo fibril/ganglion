@@ -11,6 +11,8 @@ import io.fibril.ganglion.clientServer.v1.media.MediaServiceImpl
 import io.fibril.ganglion.clientServer.v1.presence.PresenceController
 import io.fibril.ganglion.clientServer.v1.presence.PresenceService
 import io.fibril.ganglion.clientServer.v1.presence.PresenceServiceImpl
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventServiceImpl
 import io.fibril.ganglion.clientServer.v1.rooms.*
 import io.fibril.ganglion.clientServer.v1.typing.TypingController
 import io.fibril.ganglion.clientServer.v1.typing.TypingService
@@ -46,7 +48,11 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
 
         // ROOM
         val roomControllerRouter =
-            RoomController(vertx, servicesMap[RoomServiceImpl.IDENTIFIER] as RoomService).mountSubRoutes()
+            RoomController(
+                vertx,
+                servicesMap[RoomServiceImpl.IDENTIFIER] as RoomService,
+                servicesMap[RoomEventServiceImpl.IDENTIFIER] as RoomEventService
+            ).mountSubRoutes()
 
         // ROOM ALIAS
         val roomAliasControllerRouter =

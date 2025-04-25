@@ -12,6 +12,9 @@ import io.fibril.ganglion.clientServer.extensions.useDTOValidation
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
 import io.fibril.ganglion.clientServer.utils.rateLimiters.RoomRequestRateLimiter
 import io.fibril.ganglion.clientServer.v1.authentication.RoleType
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventNames
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
+import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.CreateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.*
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -19,7 +22,11 @@ import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.handler.BodyHandler
 
-internal class RoomController @Inject constructor(private val vertx: Vertx, private val roomService: RoomService) :
+internal class RoomController @Inject constructor(
+    private val vertx: Vertx,
+    private val roomService: RoomService,
+    private val roomEventService: RoomEventService
+) :
     Controller(vertx) {
     override fun mountSubRoutes(): Router {
 
@@ -93,10 +100,19 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
             .handler(::updateRoomVisibility)
 
         router.get(GET_PUBLIC_ROOMS_PATH).handler(::getPublicRooms)
+
         router.post(GET_PUBLIC_ROOMS_PATH)
             .useDTOValidation(ListPublicRoomsDTO::class.java)
             .authenticatedRoute(RoleType.USER)
             .handler(::getPublicRooms)
+
+        router.put(PUT_ROOM_MESSAGE_EVENT_PATH)
+            .authenticatedRoute(RoleType.USER)
+            .handler(::putMessageEvent)
+
+        router.put(PUT_ROOM_STATE_EVENT_PATH)
+            .authenticatedRoute(RoleType.USER)
+            .handler(::putRoomStateEvent)
 
         return router
     }
@@ -358,6 +374,44 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
         }
     }
 
+    private fun putMessageEvent(routingContext: RoutingContext) {
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val createMessageEventDto = CreateRoomEventDTO(
+                JsonObject.mapFrom(routingContext.pathParams())
+                    .put("content", routingContext.body()?.asJsonObject()),
+                RoomEventNames.MESSAGE,
+                routingContext.user()
+            )
+            if (createMessageEventDto.validate().valid) {
+                roomEventService.create(createMessageEventDto)
+                    .onSuccess { roomEvent ->
+                        routingContext.end(JsonObject.of("event_id", roomEvent.id).toString())
+                    }
+                    .onFailure {
+                        val err = it as RequestException
+                        routingContext.response().setStatusCode(err.statusCode)
+                        routingContext.end(err.json.toString())
+                    }
+            } else {
+                routingContext.response().setStatusCode(400)
+                routingContext.end(
+                    StandardErrorResponse(
+                        ErrorCodes.M_INVALID_PARAM
+                    ).toString()
+                )
+            }
+        }
+    }
+
+    private fun putRoomStateEvent(routingContext: RoutingContext) {
+        // TODO
+        routingContext.response().setStatusCode(403)
+        routingContext.end(
+            StandardErrorResponse(ErrorCodes.M_FORBIDDEN, error = "Endpoint not yet available").asJson().toString()
+        )
+
+    }
+
 
     companion object {
         const val CREATE_ROOM_PATH = "/v3/createRoom"
@@ -374,5 +428,7 @@ internal class RoomController @Inject constructor(private val vertx: Vertx, priv
         const val GET_ROOM_VISIBILITY_PATH = "/v3/directory/list/room/:roomId"
         const val PUT_ROOM_VISIBILITY_PATH = "/v3/directory/list/room/:roomId"
         const val GET_PUBLIC_ROOMS_PATH = "/v3/publicRooms"
+        const val PUT_ROOM_MESSAGE_EVENT_PATH = "/v3/rooms/:roomId/send/:eventType/:txnId"
+        const val PUT_ROOM_STATE_EVENT_PATH = "/v3/rooms/:roomId/state/:eventType/:stateKey"
     }
 }

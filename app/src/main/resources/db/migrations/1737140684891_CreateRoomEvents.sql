@@ -7,7 +7,11 @@ CREATE TABLE IF NOT EXISTS room_events (
     content JSONB NOT NULL,
     state_key VARCHAR(510),
     type VARCHAR(255) NOT NULL,
-    CONSTRAINT room_events_unique_room_type_state_key UNIQUE (room_id, state_key, type)
+    transaction_id VARCHAR(255),
+    parent_id VARCHAR(510) CHECK (parent_id ~ '^\$[a-zA-Z0-9_\-./]+:[a-zA-Z0-9\-._~]+$'),
+    rel_type VARCHAR CHECK (rel_type IN('m.thread', 'm.replace', 'm.annotation', 'm.reference', 'm.in_reply_to')),
+    CONSTRAINT room_events_unique_room_type_state_key UNIQUE (room_id, state_key, type),
+    CONSTRAINT room_events_unique_transaction_id UNIQUE (transaction_id)
 );
 
 

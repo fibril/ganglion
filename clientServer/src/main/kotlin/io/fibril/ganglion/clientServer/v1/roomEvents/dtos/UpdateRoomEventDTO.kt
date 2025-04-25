@@ -40,7 +40,12 @@ data class UpdateRoomEventDTO @Inject constructor(
         "content"
     )
 
-    override val paramNameTransformMapping: Map<String, String> = mapOf()
+    override val paramNameTransformMapping: Map<String, String> = mapOf(
+        "eventType" to "type",
+        "roomId" to "room_id",
+        "stateKey" to "state_key",
+        "txnId" to "transaction_id"
+    )
 
     override fun validate(): DTOValidationResult {
         return Helpers.validate(json, schema)
