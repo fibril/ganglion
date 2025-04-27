@@ -2,10 +2,10 @@ package io.fibril.ganglion.app.verticles
 
 import com.google.inject.Guice
 import io.fibril.ganglion.clientServer.ClientModule
+import io.fibril.ganglion.clientServer.extensions.exclude
 import io.fibril.ganglion.clientServer.utils.CoroutineHelpers
 import io.fibril.ganglion.clientServer.v1.authentication.AuthService
 import io.fibril.ganglion.clientServer.v1.authentication.models.AuthDatabaseActions
-import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Future
 import io.vertx.core.ThreadingModel
@@ -40,9 +40,7 @@ class AuthWorkerVerticle : CoroutineVerticle() {
         try {
             val tokenDataObject = message.body()
             val token = tokenDataObject.getString("token")
-            val tokenType = tokenDataObject.getString("type").lowercase()
-            val userId = MatrixUserId(tokenDataObject.getString("sub"))
-            return authService.saveGeneratedToken(token, tokenType, userId)
+            return authService.saveGeneratedToken(token, tokenDataObject.exclude("token"))
         } catch (e: Exception) {
             return Future.failedFuture(e)
         }

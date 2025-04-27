@@ -33,13 +33,13 @@ class GanglionJWTAuthProviderImpl @Inject constructor(private val vertx: Vertx) 
             .put("iat", Date().time / 1000L)
             .put("exp", (Date().time / 1000L) + (applicationBundle.getString("accessTokenLifetimeSecs").toLong()))
             .put("iss", applicationBundle.getString("domain"))
-            .put("jti", UUID.randomUUID().toString())
+            .put("jti", UUID.randomUUID().toString().replace('-', Character.MIN_VALUE))
             .put("type", TokenType.ACCESS.name)
 
         private val defaultRefreshTokenData = defaultAccessTokenData.copy().apply {
             put("exp", (Date().time / 1000L) + (applicationBundle.getString("refreshTokenLifetimeSecs").toLong()))
             put("type", TokenType.REFRESH.name)
-            put("jti", UUID.randomUUID().toString())
+            put("jti", UUID.randomUUID().toString().replace('-', Character.MIN_VALUE))
         }
 
     }

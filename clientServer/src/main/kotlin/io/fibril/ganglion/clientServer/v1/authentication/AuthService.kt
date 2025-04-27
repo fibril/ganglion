@@ -24,11 +24,14 @@ import io.vertx.core.json.JsonObject
 import kotlinx.coroutines.future.asDeferred
 import org.mindrot.jbcrypt.BCrypt
 import java.util.*
+import io.vertx.ext.auth.User as VertxUser
 
 interface AuthService : Service<Password> {
     suspend fun login(loginDTO: LoginDTO): Future<JsonObject>
     suspend fun refresh(refreshDTO: RefreshDTO): Future<JsonObject>
-    suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Future<Boolean>
+    suspend fun saveGeneratedToken(token: String, tokenDataObject: JsonObject): Future<Boolean>
+    suspend fun logout(vertxUser: VertxUser): Future<Boolean>
+    suspend fun logoutAll(vertxUser: VertxUser): Future<Boolean>
 }
 
 class AuthServiceImpl @Inject constructor(
@@ -41,7 +44,9 @@ class AuthServiceImpl @Inject constructor(
     companion object {
         const val IDENTIFIER = "v1.authentication.AuthService"
 
-        fun generatePasswordHash(password: String): String = BCrypt.hashpw(password, BCrypt.gensalt());
+        fun generatePasswordHash(password: String): String = BCrypt.hashpw(password, BCrypt.gensalt())
+
+        private val applicationBundle = ResourceBundle.getBundle("application")
     }
 
     override suspend fun login(loginDTO: LoginDTO): Future<JsonObject> {
@@ -120,7 +125,11 @@ class AuthServiceImpl @Inject constructor(
                 )
             )
 
-            val tokenData = JsonObject.of("sub", matrixUserId.toString()).put("role", user.asJson().getString("role"))
+            val tokenData = JsonObject.of(
+                "sub", matrixUserId.toString(),
+                "device_id", deviceId,
+                "role", user.asJson().getString("role")
+            )
             val accessToken = ganglionJWTAuthProvider.generateToken(
                 tokenData,
                 TokenType.ACCESS,
@@ -152,7 +161,8 @@ class AuthServiceImpl @Inject constructor(
 
     override suspend fun refresh(refreshDTO: RefreshDTO): Future<JsonObject> {
         val params = refreshDTO.params()
-        val refreshToken = params.getString("token", "")
+        val refreshToken = params.getString("refresh_token", "")
+
         authRepository.findAuthTokenByToken(refreshToken, TokenType.REFRESH.name)
             ?: return Future.failedFuture(
                 RequestException(
@@ -180,7 +190,11 @@ class AuthServiceImpl @Inject constructor(
                     StandardErrorResponse(ErrorCodes.M_FORBIDDEN, error = "User does not exist").asJson()
                 )
             )
-        val tokenData = JsonObject.of("sub", user.id).put("role", user.asJson().getString("role"))
+        val tokenData = JsonObject.of(
+            "sub", user.id,
+            "device_id", refreshTokenClaims.getOrDefault("device_id", ""),
+            "role", user.asJson().getString("role")
+        )
         val accessToken = ganglionJWTAuthProvider.generateToken(
             tokenData,
             TokenType.ACCESS,
@@ -191,11 +205,41 @@ class AuthServiceImpl @Inject constructor(
             JsonObject()
                 .put("access_token", accessToken)
                 .put("refresh_token", refreshToken)
+                .put(
+                    "expires_in_ms",
+                    (Date().time / 1000L) + (applicationBundle.getString("accessTokenLifetimeSecs").toLong())
+                )
         )
     }
 
-    override suspend fun saveGeneratedToken(token: String, tokenType: String, userId: MatrixUserId): Future<Boolean> {
-        val saved = authRepository.saveGeneratedToken(token, tokenType, userId)
+    override suspend fun logout(vertxUser: VertxUser): Future<Boolean> {
+        val deviceId = vertxUser.getOrDefault("device_id", "")
+        val deleted = authRepository.deleteTokensByDeviceId(deviceId)
+        if (deleted) Future.succeededFuture(deleted)
+        return Future.failedFuture(
+            RequestException(
+                statusCode = 501,
+                "",
+                StandardErrorResponse(ErrorCodes.M_UNKNOWN, error = "Failed to Logout").asJson()
+            )
+        )
+    }
+
+    override suspend fun logoutAll(vertxUser: VertxUser): Future<Boolean> {
+        val userId = vertxUser.principal().getString("sub")
+        val deleted = authRepository.deleteUserTokens(userId)
+        if (deleted) Future.succeededFuture(deleted)
+        return Future.failedFuture(
+            RequestException(
+                statusCode = 501,
+                "",
+                StandardErrorResponse(ErrorCodes.M_UNKNOWN, error = "Failed to Logout").asJson()
+            )
+        )
+    }
+
+    override suspend fun saveGeneratedToken(token: String, tokenDataObject: JsonObject): Future<Boolean> {
+        val saved = authRepository.saveGeneratedToken(token, tokenDataObject)
         return Future.succeededFuture(saved)
     }
 

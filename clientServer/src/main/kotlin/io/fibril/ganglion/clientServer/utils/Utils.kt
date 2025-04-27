@@ -4,7 +4,7 @@ import java.security.SecureRandom
 import java.util.*
 
 object Utils {
-    fun idGenerator() = UUID.randomUUID().toString().replace("-", "")
+    fun idGenerator() = UUID.randomUUID().toString().replace('-', Character.MIN_VALUE)
 
     fun shortIdGenerator(length: Int? = 18): String {
         val random = SecureRandom()
