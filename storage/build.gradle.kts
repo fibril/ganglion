@@ -11,6 +11,7 @@ dependencies {
     implementation(libs.vertx.config)
     implementation(libs.vertx.kotlin.coroutines)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.ongres.scram.client)
     implementation(libs.guice)
     testImplementation(kotlin("test"))
 }

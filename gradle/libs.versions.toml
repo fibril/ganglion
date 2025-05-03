@@ -8,6 +8,7 @@ guice = "7.0.0"
 jackson = "2.18.2"
 bcrypt = "0.3m"
 thumbnailator = "0.4.20"
+scram = "2.1"
 
 [libraries]
 
@@ -22,6 +23,7 @@ vertx-auth-jwt = { group = "io.vertx", name = "vertx-auth-jwt", version.ref = "v
 
 ### DATABASES
 vertx-pg-client = { group = "io.vertx", name = "vertx-pg-client", version.ref = "vertx" }
+ongres-scram-client = { group = "com.ongres.scram", name = "client", version.ref = "scram" }  # for PG authentication
 vertx-redis-client = { group = "io.vertx", name = "vertx-redis-client", version.ref = "vertx" }
 
 ### KOTLINX-COROUTINES

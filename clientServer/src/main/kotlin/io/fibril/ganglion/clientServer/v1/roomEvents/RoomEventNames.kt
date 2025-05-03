@@ -40,8 +40,10 @@ object RoomEventNames {
         const val INVITE = "m.call.invite"
         const val CANDIDATES = "m.call.candidates"
         const val ANSWER = "m.call.answer"
+        const val SELECT_ANSWER = "m.call.select_answer"
         const val HANGUP = "m.call.hangup"
         const val REJECT = "m.call.reject"
         const val NEGOTIATE = "m.call.negotiate"
+        const val SDP_STREAM_METADATA_CHANGED = "m.call.sdp_stream_metadata_changed"
     }
 }

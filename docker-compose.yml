@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  ganglion:
+    build: .
+    ports:
+      - "8888:8888"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=ganglion
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+    depends_on:
+      - postgres
+      - redis
+  #    healthcheck:
+  #      test: ["CMD", "curl", "-f", "http://localhost:8888/api/health"]
+  #      interval: 30s
+  #      timeout: 10s
+  #      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ganglion
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/var/lib/redis/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      - REDIS_PASSWORD=redis
+
+
+volumes:
+  postgres_data:
+  redis_data:

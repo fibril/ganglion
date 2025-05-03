@@ -5,19 +5,22 @@ import io.fibril.ganglion.storage.migration.Migrator
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.ThreadingModel
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.pgclient.PgException
 import kotlinx.coroutines.runBlocking
 
 class MigrationWorkerVerticle : CoroutineVerticle() {
     override suspend fun start() {
-        val pgDatabaseClient = PGDatabase(vertx).client()
-        runBlocking {
-            pgDatabaseClient.query(Migrator.buildMigrationSQL()).execute().onComplete { ar ->
-                if (ar.failed()) {
-                    throw ar.cause()
+        try {
+            val pgDatabaseClient = PGDatabase(vertx).client()
+            runBlocking {
+                pgDatabaseClient.query(Migrator.buildMigrationSQL()).execute().onComplete { ar ->
+
+                }.onFailure { err ->
+                    throw (err)
                 }
             }
-
-
+        } catch (pgException: PgException) {
+            throw pgException
         }
     }
 

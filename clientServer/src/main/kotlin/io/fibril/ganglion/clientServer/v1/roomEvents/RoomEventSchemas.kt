@@ -9,6 +9,7 @@ import io.vertx.json.schema.common.dsl.Keywords
 import io.vertx.json.schema.common.dsl.ObjectSchemaBuilder
 import io.vertx.json.schema.common.dsl.SchemaBuilder
 import io.vertx.json.schema.common.dsl.Schemas
+import java.util.regex.Pattern
 
 object RoomEventSchemas {
     val BaseRoomEventSchema = Schemas.objectSchema()
@@ -217,6 +218,167 @@ object RoomEventSchemas {
 
         val TOPIC_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder =
             Schemas.objectSchema().requiredProperty("topic", Schemas.stringSchema())
+
+
+        val CALL_INVITE_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder = Schemas.objectSchema()
+            .requiredProperty("call_id", Schemas.stringSchema())
+            .requiredProperty("party_id", Schemas.stringSchema())
+            .requiredProperty("version", Schemas.stringSchema())
+            .requiredProperty("lifetime", Schemas.intSchema())
+            .requiredProperty(
+                "offer",
+                Schemas.objectSchema()
+                    .requiredProperty("sdp", Schemas.stringSchema())
+                    .requiredProperty(
+                        "type", Schemas.stringSchema().with(
+                            Keywords.pattern(
+                                Regex("""^(offer)$""").toPattern()
+                            )
+                        )
+                    )
+            )
+            .optionalProperty("invitee", Schemas.stringSchema())
+            .optionalProperty(
+                "sdp_stream_metadata", Schemas.objectSchema()
+                    .patternProperty(
+                        Pattern.compile(".*"), Schemas.objectSchema()
+                            .optionalProperty("audio_muted", Schemas.booleanSchema())
+                            .optionalProperty("video_muted", Schemas.booleanSchema())
+                            .requiredProperty(
+                                "purpose", Schemas.stringSchema().with(
+                                    Keywords.pattern(
+                                        Regex("""^("m.usermedia"|"m.screenshare")$""").toPattern()
+                                    )
+                                )
+                            )
+                    )
+                    .allowAdditionalProperties(false)
+            )
+
+        val CALL_CANDIDATES_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder = Schemas.objectSchema()
+            .requiredProperty("call_id", Schemas.stringSchema())
+            .requiredProperty("party_id", Schemas.stringSchema())
+            .requiredProperty("version", Schemas.stringSchema())
+            .requiredProperty(
+                "candidates",
+                Schemas.arraySchema().items(
+                    Schemas.objectSchema()
+                        .requiredProperty("candidate", Schemas.stringSchema())
+                        .optionalProperty("sdpMLineIndex", Schemas.intSchema())
+                        .optionalProperty("sdpMid", Schemas.stringSchema())
+                )
+            )
+
+        val CALL_ANSWER_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder = Schemas.objectSchema()
+            .requiredProperty("call_id", Schemas.stringSchema())
+            .requiredProperty("party_id", Schemas.stringSchema())
+            .requiredProperty("version", Schemas.stringSchema())
+            .requiredProperty(
+                "answer", Schemas.objectSchema()
+                    .requiredProperty("sdp", Schemas.stringSchema())
+                    .requiredProperty(
+                        "type", Schemas.stringSchema().with(
+                            Keywords.pattern(
+                                Regex("""^(answer)$""").toPattern()
+                            )
+                        )
+                    )
+            )
+            .optionalProperty(
+                "sdp_stream_metadata", Schemas.objectSchema()
+                    .patternProperty(
+                        Pattern.compile(".*"), Schemas.objectSchema()
+                            .optionalProperty("audio_muted", Schemas.booleanSchema())
+                            .optionalProperty("video_muted", Schemas.booleanSchema())
+                            .requiredProperty(
+                                "purpose", Schemas.stringSchema().with(
+                                    Keywords.pattern(
+                                        Regex("""^("m.usermedia"|"m.screenshare")$""").toPattern()
+                                    )
+                                )
+                            )
+                    )
+                    .allowAdditionalProperties(false)
+            )
+
+        val CALL_SELECT_ANSWER_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder = Schemas.objectSchema()
+            .requiredProperty("call_id", Schemas.stringSchema())
+            .requiredProperty("party_id", Schemas.stringSchema())
+            .requiredProperty("version", Schemas.stringSchema())
+            .requiredProperty("selected_party_id", Schemas.stringSchema())
+
+        val CALL_HANGUP_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder = Schemas.objectSchema()
+            .requiredProperty("call_id", Schemas.stringSchema())
+            .requiredProperty("party_id", Schemas.stringSchema())
+            .requiredProperty("version", Schemas.stringSchema())
+            .requiredProperty(
+                "reason", Schemas.stringSchema().with(
+                    Keywords.pattern(
+                        Regex("""^(ice_timeout|ice_failed|invite_timeout|user_hangup|user_media_failed|user_busy|unknown_error)$""")
+                            .toPattern()
+                    )
+                )
+            )
+
+        val CALL_REJECT_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder = Schemas.objectSchema()
+            .requiredProperty("call_id", Schemas.stringSchema())
+            .requiredProperty("party_id", Schemas.stringSchema())
+            .requiredProperty("version", Schemas.stringSchema())
+
+        val CALL_NEGOTIATE_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder = Schemas.objectSchema()
+            .requiredProperty("call_id", Schemas.stringSchema())
+            .requiredProperty("party_id", Schemas.stringSchema())
+            .requiredProperty("version", Schemas.stringSchema())
+            .requiredProperty("lifetime", Schemas.intSchema())
+            .requiredProperty(
+                "description", Schemas.objectSchema()
+                    .requiredProperty("sdp", Schemas.stringSchema())
+                    .requiredProperty(
+                        "type", Schemas.stringSchema().with(
+                            Keywords.pattern(
+                                Regex("""^(answer|offer)$""").toPattern()
+                            )
+                        )
+                    )
+            )
+            .optionalProperty(
+                "sdp_stream_metadata", Schemas.objectSchema()
+                    .patternProperty(
+                        Pattern.compile(".*"), Schemas.objectSchema()
+                            .optionalProperty("audio_muted", Schemas.booleanSchema())
+                            .optionalProperty("video_muted", Schemas.booleanSchema())
+                            .requiredProperty(
+                                "purpose", Schemas.stringSchema().with(
+                                    Keywords.pattern(
+                                        Regex("""^("m.usermedia"|"m.screenshare")$""").toPattern()
+                                    )
+                                )
+                            )
+                    )
+                    .allowAdditionalProperties(false)
+            )
+
+        val CALL_SDP_STREAM_METADATA_CHANGED_CONTENT_SCHEMA_BUILDER: ObjectSchemaBuilder = Schemas.objectSchema()
+            .requiredProperty("call_id", Schemas.stringSchema())
+            .requiredProperty("party_id", Schemas.stringSchema())
+            .requiredProperty("version", Schemas.stringSchema())
+            .requiredProperty(
+                "sdp_stream_metadata", Schemas.objectSchema()
+                    .patternProperty(
+                        Pattern.compile(".*"), Schemas.objectSchema()
+                            .optionalProperty("audio_muted", Schemas.booleanSchema())
+                            .optionalProperty("video_muted", Schemas.booleanSchema())
+                            .requiredProperty(
+                                "purpose", Schemas.stringSchema().with(
+                                    Keywords.pattern(
+                                        Regex("""^("m.usermedia"|"m.screenshare")$""").toPattern()
+                                    )
+                                )
+                            )
+                    )
+                    .allowAdditionalProperties(false)
+            )
+
     }
 }
 
@@ -239,4 +401,13 @@ val EVENT_NAME_TO_CONTENT_SCHEMA_MAP: Map<String, SchemaBuilder<*, *>> = mapOf(
     RoomEventNames.StateEvents.SERVER_ACL to RoomEventSchemas.ContentSchemas.SERVER_ACL_CONTENT_SCHEMA_BUILDER,
     RoomEventNames.StateEvents.THIRD_PARTY_INVITE to RoomEventSchemas.ContentSchemas.THIRD_PARTY_INVITE_CONTENT_SCHEMA_BUILDER,
     RoomEventNames.StateEvents.TOPIC to RoomEventSchemas.ContentSchemas.TOPIC_CONTENT_SCHEMA_BUILDER,
+    // VOIP
+    RoomEventNames.CallEvents.INVITE to RoomEventSchemas.ContentSchemas.CALL_INVITE_CONTENT_SCHEMA_BUILDER,
+    RoomEventNames.CallEvents.CANDIDATES to RoomEventSchemas.ContentSchemas.CALL_CANDIDATES_CONTENT_SCHEMA_BUILDER,
+    RoomEventNames.CallEvents.ANSWER to RoomEventSchemas.ContentSchemas.CALL_ANSWER_CONTENT_SCHEMA_BUILDER,
+    RoomEventNames.CallEvents.SELECT_ANSWER to RoomEventSchemas.ContentSchemas.CALL_SELECT_ANSWER_CONTENT_SCHEMA_BUILDER,
+    RoomEventNames.CallEvents.HANGUP to RoomEventSchemas.ContentSchemas.CALL_HANGUP_CONTENT_SCHEMA_BUILDER,
+    RoomEventNames.CallEvents.REJECT to RoomEventSchemas.ContentSchemas.CALL_REJECT_CONTENT_SCHEMA_BUILDER,
+    RoomEventNames.CallEvents.NEGOTIATE to RoomEventSchemas.ContentSchemas.CALL_NEGOTIATE_CONTENT_SCHEMA_BUILDER,
+    RoomEventNames.CallEvents.SDP_STREAM_METADATA_CHANGED to RoomEventSchemas.ContentSchemas.CALL_SDP_STREAM_METADATA_CHANGED_CONTENT_SCHEMA_BUILDER
 )

@@ -8,6 +8,7 @@ import io.fibril.ganglion.clientServer.v1.RoutesV1
 import io.fibril.ganglion.clientServer.v1.authentication.AuthService
 import io.fibril.ganglion.clientServer.v1.media.MediaService
 import io.fibril.ganglion.clientServer.v1.presence.PresenceService
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
 import io.fibril.ganglion.clientServer.v1.rooms.RoomAliasService
 import io.fibril.ganglion.clientServer.v1.rooms.RoomService
 import io.fibril.ganglion.clientServer.v1.typing.TypingService
@@ -22,22 +23,24 @@ class MainVerticle : CoroutineVerticle() {
     override suspend fun start() {
         deployMigrationWorkerVerticle(vertx).onComplete {
             if (it.succeeded()) {
-
                 deployWorkerVerticles(vertx).onComplete {
                     println("Worker Verticles deployed")
+                }.onFailure {
+                    vertx.close()
                 }
 
                 val injector = Guice.createInjector(ClientModule(vertx))
 
                 val services = listOf(
-                    injector.getInstance(UserService::class.java),
-                    injector.getInstance(UserProfileService::class.java),
-                    injector.getInstance(MediaService::class.java),
                     injector.getInstance(AuthService::class.java),
-                    injector.getInstance(RoomService::class.java),
-                    injector.getInstance(RoomAliasService::class.java),
+                    injector.getInstance(MediaService::class.java),
                     injector.getInstance(PresenceService::class.java),
-                    injector.getInstance(TypingService::class.java)
+                    injector.getInstance(RoomAliasService::class.java),
+                    injector.getInstance(RoomEventService::class.java),
+                    injector.getInstance(RoomService::class.java),
+                    injector.getInstance(TypingService::class.java),
+                    injector.getInstance(UserProfileService::class.java),
+                    injector.getInstance(UserService::class.java)
                 )
 
                 val servicesMap: Map<String, Service<*>> = mutableMapOf<String, Service<*>>().apply {
@@ -58,30 +61,9 @@ class MainVerticle : CoroutineVerticle() {
                         }
                     }
             } else {
-                // block
-
+                vertx.close()
             }
         }
-
-//        val pgDatabase = PGDatabase()
-//        val client = pgDatabase.client(vertx)
-//        client.query("CREATE TABLE IF NOT EXISTS gangs ( name varchar );").execute().onComplete {
-//            if (it.succeeded()) {
-//                println("it succeeded")
-//            } else {
-//                println("it failed")
-//            }
-//        }
-//        vertx.createHttpServer()
-//            .listen(8888)
-//            .onComplete { http ->
-//                if (http.succeeded()) {
-//                    println("HTTP server started on port 8888")
-//                } else {
-//                    println("HTTP server failed to start")
-//                }
-//
-//            }
     }
 
     private fun deployMigrationWorkerVerticle(vertx: Vertx): Future<String> {
