@@ -10,6 +10,12 @@ import io.fibril.ganglion.clientServer.v1.authentication.AuthServiceImpl
 import io.fibril.ganglion.clientServer.v1.authentication.models.Password
 import io.fibril.ganglion.clientServer.v1.authentication.models.PasswordModel
 import io.fibril.ganglion.clientServer.v1.devices.*
+import io.fibril.ganglion.clientServer.v1.filters.FilterRepository
+import io.fibril.ganglion.clientServer.v1.filters.FilterRepositoryImpl
+import io.fibril.ganglion.clientServer.v1.filters.FilterService
+import io.fibril.ganglion.clientServer.v1.filters.FilterServiceImpl
+import io.fibril.ganglion.clientServer.v1.filters.models.Filter
+import io.fibril.ganglion.clientServer.v1.filters.models.FilterModel
 import io.fibril.ganglion.clientServer.v1.media.*
 import io.fibril.ganglion.clientServer.v1.media.models.Media
 import io.fibril.ganglion.clientServer.v1.media.models.MediaModel
@@ -99,6 +105,11 @@ class ClientModule(val vertx: Vertx) : AbstractModule() {
         // Typing
         bind(TypingModel::class.java).to(Typing::class.java)
         bind(TypingService::class.java).to(TypingServiceImpl::class.java)
+
+        // Filter
+        bind(FilterModel::class.java).to(Filter::class.java)
+        bind(FilterService::class.java).to(FilterServiceImpl::class.java)
+        bind(FilterRepository::class.java).to(FilterRepositoryImpl::class.java)
     }
 
     @Provides

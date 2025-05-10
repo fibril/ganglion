@@ -5,6 +5,9 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.v1.authentication.AuthController
 import io.fibril.ganglion.clientServer.v1.authentication.AuthService
 import io.fibril.ganglion.clientServer.v1.authentication.AuthServiceImpl
+import io.fibril.ganglion.clientServer.v1.filters.FilterController
+import io.fibril.ganglion.clientServer.v1.filters.FilterService
+import io.fibril.ganglion.clientServer.v1.filters.FilterServiceImpl
 import io.fibril.ganglion.clientServer.v1.media.MediaController
 import io.fibril.ganglion.clientServer.v1.media.MediaService
 import io.fibril.ganglion.clientServer.v1.media.MediaServiceImpl
@@ -69,11 +72,17 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
             ).mountSubRoutes()
 
         // TYPING
-        val typingController =
+        val typingControllerRouter =
             TypingController(
                 vertx,
                 servicesMap[TypingServiceImpl.IDENTIFIER] as TypingService
             ).mountSubRoutes()
+
+        // FILTER
+        val filterControllerRouter = FilterController(
+            vertx,
+            servicesMap[FilterServiceImpl.IDENTIFIER] as FilterService
+        ).mountSubRoutes()
 
 
 
@@ -94,7 +103,9 @@ class RoutesV1 @Inject constructor(private val vertx: Vertx, val servicesMap: Ma
 
         router.route(PATH_PREFIX).subRouter(presenceControllerRouter)
 
-        router.route(PATH_PREFIX).subRouter(typingController)
+        router.route(PATH_PREFIX).subRouter(typingControllerRouter)
+
+        router.route(PATH_PREFIX).subRouter(filterControllerRouter)
 
     }
 

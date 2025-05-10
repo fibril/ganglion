@@ -42,5 +42,6 @@ bin/
 .DS_Store
 
 app/src/main/resources/*
+!app/src/main/resources/db
 !app/src/main/resources/development
 !app/src/main/resources/development*.properties

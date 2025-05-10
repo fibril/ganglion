@@ -6,6 +6,7 @@ import io.fibril.ganglion.clientServer.ClientModule
 import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.v1.RoutesV1
 import io.fibril.ganglion.clientServer.v1.authentication.AuthService
+import io.fibril.ganglion.clientServer.v1.filters.FilterService
 import io.fibril.ganglion.clientServer.v1.media.MediaService
 import io.fibril.ganglion.clientServer.v1.presence.PresenceService
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
@@ -33,6 +34,7 @@ class MainVerticle : CoroutineVerticle() {
 
                 val services = listOf(
                     injector.getInstance(AuthService::class.java),
+                    injector.getInstance(FilterService::class.java),
                     injector.getInstance(MediaService::class.java),
                     injector.getInstance(PresenceService::class.java),
                     injector.getInstance(RoomAliasService::class.java),

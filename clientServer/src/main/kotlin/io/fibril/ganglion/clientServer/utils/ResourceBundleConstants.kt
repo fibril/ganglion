@@ -15,4 +15,5 @@ object ResourceBundleConstants {
     val deviceQueries = ResourceBundle.getBundle("queries.deviceQueries")
     val roomQueries = ResourceBundle.getBundle("queries.roomQueries")
     val roomEventQueries = ResourceBundle.getBundle("queries.roomEventQueries")
+    val filterQueries = ResourceBundle.getBundle("queries.filterQueries")
 }
