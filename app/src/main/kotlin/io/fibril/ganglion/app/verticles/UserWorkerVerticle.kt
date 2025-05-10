@@ -51,8 +51,8 @@ class UserWorkerVerticle : CoroutineVerticle() {
             val displayName = body.getString("display_name")
             val userMembershipEvents = roomEventService.fetchEvents(
                 mapOf(
-                    "type" to RoomEventNames.StateEvents.MEMBER,
-                    "state_key" to userId
+                    "type =" to RoomEventNames.StateEvents.MEMBER,
+                    "state_key =" to userId
                 )
             ).toCompletionStage().await() ?: listOf()
             for (membershipEvent in userMembershipEvents) {

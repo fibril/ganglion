@@ -10,6 +10,7 @@ import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
 import io.fibril.ganglion.clientServer.extensions.exclude
 import io.fibril.ganglion.clientServer.extensions.only
+import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants.applicationBundle
 import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
 import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
 import io.fibril.ganglion.clientServer.v1.authentication.models.AuthDatabaseActions
@@ -20,7 +21,6 @@ import io.fibril.ganglion.clientServer.v1.users.models.UserProfile
 import io.vertx.core.Future
 import io.vertx.core.json.JsonObject
 import io.vertx.sqlclient.DatabaseException
-import java.util.*
 
 
 interface UserService : Service<User> {
@@ -53,7 +53,7 @@ class UserServiceImpl @Inject constructor(
     override suspend fun create(dto: DTO): Future<User> {
         val params = dto.params()
         val username = params.getString("username")
-        val domain = ResourceBundle.getBundle("application").getString("domain")
+        val domain = applicationBundle.getString("domain")
 
         val matrixUserId = try {
             MatrixUserId(username, domain)

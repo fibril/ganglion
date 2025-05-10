@@ -73,8 +73,8 @@ object StatementGenerator {
             return """
                 CREATE TABLE IF NOT EXISTS $tableName (
                     id VARCHAR PRIMARY KEY NOT NULL DEFAULT REPLACE(uuid_generate_v4()::TEXT, '-', '')::VARCHAR,
-                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-                    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now()
+                    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (now() at time zone 'utc'),
+                    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (now() at time zone 'utc')
                 );
                 
                 CREATE TRIGGER update_${tableName}_updated_at
@@ -83,6 +83,27 @@ object StatementGenerator {
                         $tableName
                     FOR EACH ROW
                 EXECUTE PROCEDURE update_updated_at_column();
+                
+                CREATE TRIGGER notify_${tableName}_resource_created
+                    AFTER INSERT
+                    ON
+                        $tableName
+                    FOR EACH ROW
+                EXECUTE PROCEDURE notify_resource_created();
+                
+                CREATE TRIGGER notify_${tableName}_resource_updated
+                    AFTER UPDATE
+                    ON
+                        $tableName
+                    FOR EACH ROW
+                EXECUTE PROCEDURE notify_resource_updated();
+                
+                CREATE TRIGGER notify_${tableName}_resource_deleted
+                    AFTER DELETE
+                    ON
+                        $tableName
+                    FOR EACH ROW
+                EXECUTE PROCEDURE notify_resource_deleted();
             """.trimIndent()
         }
         return ""

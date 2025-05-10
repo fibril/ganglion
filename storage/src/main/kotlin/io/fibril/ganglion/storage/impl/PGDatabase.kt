@@ -4,8 +4,10 @@ import com.google.inject.Inject
 import io.fibril.ganglion.storage.Database
 import io.vertx.core.Vertx
 import io.vertx.pgclient.PgBuilder
+import io.vertx.pgclient.pubsub.PgSubscriber
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.SqlClient
+
 
 class PGDatabase @Inject constructor(val vertx: Vertx) : Database<SqlClient> {
     private val dbEngine = PGEngine(vertx)
@@ -28,5 +30,10 @@ class PGDatabase @Inject constructor(val vertx: Vertx) : Database<SqlClient> {
             .connectingTo(connectOptions)
             .using(vertx)
             .build()
+    }
+
+    override suspend fun subscriber(): PgSubscriber {
+        val connectOptions = dbEngine.connectOptions()
+        return PgSubscriber.subscriber(vertx, connectOptions)
     }
 }

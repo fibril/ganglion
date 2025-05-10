@@ -9,6 +9,8 @@ jackson = "2.18.2"
 bcrypt = "0.3m"
 thumbnailator = "0.4.20"
 scram = "2.1"
+opensearch = "2.8.1"
+client5 = "5.2.1"
 
 [libraries]
 
@@ -38,6 +40,8 @@ resilience4j-kotlin = { group = "io.github.resilience4j", name = "resilience4j-k
 jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 bcrypt = { group = "org.mindrot", name = "jbcrypt", version.ref = "bcrypt" }
 thumbnailator = { group = "net.coobird", name = "thumbnailator", version.ref = "thumbnailator" }
+opensearch-java = { group = "org.opensearch.client", name = "opensearch-java", version.ref = "opensearch" }
+httpclient5 = { group = "org.apache.httpcomponents.client5", name = "httpclient5", version.ref = "client5" }
 
 ### TESTS
 junit-bom = { group = "org.junit", name = "junit-bom", version.ref = "junit" }

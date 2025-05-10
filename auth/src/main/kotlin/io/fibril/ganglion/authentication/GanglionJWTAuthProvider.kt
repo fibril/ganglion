@@ -22,9 +22,10 @@ interface GanglionJWTAuthProvider {
 
 class GanglionJWTAuthProviderImpl @Inject constructor(private val vertx: Vertx) : GanglionJWTAuthProvider {
     companion object {
-        private val secretsBundle = ResourceBundle.getBundle("secrets")
+        private val ENVIRONMENT = System.getProperty("ganglion.environment")
+        private val secretsBundle = ResourceBundle.getBundle("${ENVIRONMENT}.secrets")
 
-        private val applicationBundle = ResourceBundle.getBundle("application")
+        private val applicationBundle = ResourceBundle.getBundle("${ENVIRONMENT}.application")
 
         const val ALGORITHM = "RS256"
 

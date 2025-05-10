@@ -50,8 +50,32 @@ class Migrator {
             CREATE OR REPLACE FUNCTION update_updated_at_column()
             RETURNS TRIGGER AS ${'$'}${'$'}
             BEGIN
-               NEW.updated_at = now();
+               NEW.updated_at = (now() at time zone 'utc');
                RETURN NEW;
+            END;
+            ${'$'}${'$'} language 'plpgsql';
+            
+            CREATE OR REPLACE FUNCTION notify_resource_created()
+            RETURNS TRIGGER AS ${'$'}${'$'}
+            BEGIN
+               PERFORM pg_notify(TG_TABLE_NAME || ':created', row_to_json(NEW)::text);
+               RETURN NEW;
+            END;
+            ${'$'}${'$'} language 'plpgsql';
+            
+            CREATE OR REPLACE FUNCTION notify_resource_updated()
+            RETURNS TRIGGER AS ${'$'}${'$'}
+            BEGIN
+               PERFORM pg_notify(TG_TABLE_NAME || ':updated', row_to_json(NEW)::text);
+               RETURN NEW;
+            END;
+            ${'$'}${'$'} language 'plpgsql';
+            
+            CREATE OR REPLACE FUNCTION notify_resource_deleted()
+            RETURNS TRIGGER AS ${'$'}${'$'}
+            BEGIN
+               PERFORM pg_notify(TG_TABLE_NAME || ':deleted', OLD.id);
+               RETURN OLD;
             END;
             ${'$'}${'$'} language 'plpgsql';
             
@@ -69,7 +93,7 @@ class Migrator {
                             CREATE TABLE applied_migrations (
                                 identifier TEXT NOT NULL PRIMARY KEY,
                                 ddl TEXT NOT NULL,
-                                applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                                applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (now() at time zone 'utc')
                             );
                         END IF;
                         LOCK TABLE applied_migrations IN EXCLUSIVE MODE;

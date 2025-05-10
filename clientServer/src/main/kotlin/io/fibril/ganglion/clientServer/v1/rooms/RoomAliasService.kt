@@ -76,9 +76,9 @@ class RoomAliasServiceImpl @Inject constructor(
 
     override suspend fun getRoomAliases(getRoomAliasesDTO: GetAliasesDTO): Future<List<RoomAlias>?> {
         val fetchUserMembershipEventsConditionsMap = mapOf<String, String>(
-            "state_key" to (getRoomAliasesDTO.sender?.principal()?.getString("sub") ?: "----"),
-            "type" to RoomEventNames.StateEvents.MEMBER,
-            "room_id" to getRoomAliasesDTO.params().getString("roomId")
+            "state_key =" to (getRoomAliasesDTO.sender?.principal()?.getString("sub") ?: "----"),
+            "type =" to RoomEventNames.StateEvents.MEMBER,
+            "room_id =" to getRoomAliasesDTO.params().getString("roomId")
         )
 
         val membershipEvents = try {
@@ -94,8 +94,8 @@ class RoomAliasServiceImpl @Inject constructor(
         }
 
         val fetchRoomHistoryVisibilityEventConditionsMap = mapOf<String, String>(
-            "type" to RoomEventNames.StateEvents.HISTORY_VISIBILITY,
-            "room_id" to getRoomAliasesDTO.params().getString("roomId")
+            "type =" to RoomEventNames.StateEvents.HISTORY_VISIBILITY,
+            "room_id =" to getRoomAliasesDTO.params().getString("roomId")
         )
 
         val historyVisibilityEvent = try {

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(510) PRIMARY KEY NOT NULL CHECK (id ~ '^@[a-zA-Z0-9_\-./]+:[a-zA-Z0-9\-._~]+$'),
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (now() at time zone 'utc'),
+    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (now() at time zone 'utc'),
     confirmed_at TIMESTAMP WITHOUT TIME ZONE,
     locked_at TIMESTAMP WITHOUT TIME ZONE,
     suspended_at TIMESTAMP WITHOUT TIME ZONE,

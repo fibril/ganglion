@@ -9,8 +9,9 @@ import kotlinx.coroutines.future.asDeferred
 object StorageConstants {
     val configRetrieverOptions: ConfigRetrieverOptions
         get() {
+            val environment = System.getProperty("ganglion.environment")
             val hierarchicalConfig = ConfigStoreOptions().setFormat("properties").setType("file")
-                .setConfig(JsonObject().put("path", "database.properties").put("hierarchical", true))
+                .setConfig(JsonObject().put("path", "${environment}/database.properties").put("hierarchical", true))
             return ConfigRetrieverOptions().addStore(hierarchicalConfig)
         }
 

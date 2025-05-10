@@ -166,8 +166,8 @@ class RoomEventsWorkerVerticle : CoroutineVerticle() {
     private suspend fun getCanonicalAliasEvent(roomId: String): RoomEvent? {
         return roomEventRepository.fetchEvents(
             mapOf(
-                "room_id" to roomId,
-                "type" to RoomEventNames.StateEvents.CANONICAL_ALIAS
+                "room_id =" to roomId,
+                "type =" to RoomEventNames.StateEvents.CANONICAL_ALIAS
             )
         )?.first()
 

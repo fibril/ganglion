@@ -8,6 +8,7 @@ import io.fibril.ganglion.clientServer.Service
 import io.fibril.ganglion.clientServer.errors.ErrorCodes
 import io.fibril.ganglion.clientServer.errors.RequestException
 import io.fibril.ganglion.clientServer.errors.StandardErrorResponse
+import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
 import io.fibril.ganglion.clientServer.utils.Utils
 import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
 import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
@@ -46,7 +47,6 @@ class AuthServiceImpl @Inject constructor(
 
         fun generatePasswordHash(password: String): String = BCrypt.hashpw(password, BCrypt.gensalt())
 
-        private val applicationBundle = ResourceBundle.getBundle("application")
     }
 
     override suspend fun login(loginDTO: LoginDTO): Future<JsonObject> {
@@ -69,7 +69,7 @@ class AuthServiceImpl @Inject constructor(
             )
         }
 
-        val domain = ResourceBundle.getBundle("application").getString("domain")
+        val domain = ResourceBundleConstants.domain
         val username = params.getJsonObject("identifier").getString("user")
         val matrixUserId = try {
             MatrixUserId(username, domain)
@@ -207,7 +207,8 @@ class AuthServiceImpl @Inject constructor(
                 .put("refresh_token", refreshToken)
                 .put(
                     "expires_in_ms",
-                    (Date().time / 1000L) + (applicationBundle.getString("accessTokenLifetimeSecs").toLong())
+                    (Date().time / 1000L) + (ResourceBundleConstants.applicationBundle.getString("accessTokenLifetimeSecs")
+                        .toLong())
                 )
         )
     }

@@ -13,6 +13,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.ongres.scram.client)
     implementation(libs.guice)
+    implementation(libs.opensearch.java)
+    implementation(libs.httpclient5)
     testImplementation(kotlin("test"))
 }
 

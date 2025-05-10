@@ -230,7 +230,7 @@ class RoomEventRepositoryImpl @Inject constructor(private val database: PGDataba
     override suspend fun fetchEvents(conditionsMap: Map<String, String>): List<RoomEvent> {
         val valuesQuery = mutableListOf<Any>().apply {
             for (key in conditionsMap.keys) {
-                add("$key = '${conditionsMap[key]}'")
+                add("$key '${conditionsMap[key]}'")
             }
         }.joinToString(" AND ")
 

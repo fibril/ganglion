@@ -4,6 +4,7 @@ import StorageConstants
 import com.google.inject.Inject
 import io.fibril.ganglion.storage.Database
 import io.vertx.core.Vertx
+import io.vertx.pgclient.pubsub.PgSubscriber
 import io.vertx.redis.client.Redis
 import io.vertx.redis.client.RedisOptions
 import io.vertx.sqlclient.Pool
@@ -14,6 +15,10 @@ class GanglionRedisClient @Inject constructor(val vertx: Vertx) : Database<Redis
     }
 
     override suspend fun pool(): Pool {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun subscriber(): PgSubscriber {
         TODO("Not yet implemented")
     }
 

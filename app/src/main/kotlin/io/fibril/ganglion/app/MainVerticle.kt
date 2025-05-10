@@ -23,7 +23,7 @@ class MainVerticle : CoroutineVerticle() {
     override suspend fun start() {
         deployMigrationWorkerVerticle(vertx).onComplete {
             if (it.succeeded()) {
-                deployWorkerVerticles(vertx).onComplete {
+                deployWorkerVerticles(vertx).onSuccess {
                     println("Worker Verticles deployed")
                 }.onFailure {
                     vertx.close()
@@ -58,9 +58,11 @@ class MainVerticle : CoroutineVerticle() {
                         if (http.succeeded()) {
                             println("HTTP server started on port 8888")
                         } else {
+                            println("Could not start server ${http.cause()}")
                         }
                     }
             } else {
+                println("Could not deploy migration verticle ${it.cause()}")
                 vertx.close()
             }
         }
@@ -86,6 +88,12 @@ class MainVerticle : CoroutineVerticle() {
             }
             .andThen {
                 vertx.deployVerticle(TypingWorkerVerticle::class.java, TypingWorkerVerticle.deploymentOptions)
+            }
+            .andThen {
+                vertx.deployVerticle(
+                    OpenSearchWorkerVerticle::class.java,
+                    OpenSearchWorkerVerticle.deploymentOptions
+                )
             }
 
     }

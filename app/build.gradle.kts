@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.guice)
     implementation(libs.thumbnailator)
+    implementation(libs.opensearch.java)
     implementation(project(":storage"))
     implementation(project(":clientServer"))
     testImplementation(kotlin("test"))
@@ -42,7 +43,8 @@ tasks.withType<JavaExec> {
         mainVerticleName,
         "--redeploy=$watchForChange",
         "--launcher-class=$launcherClassName",
-        "--on-redeploy=$doOnChange"
+        "--on-redeploy=$doOnChange",
+        "-Dganglion.environment=${System.getenv("GANGLION_ENVIRONMENT") ?: System.getProperty("ganglion.environment")}"
     )
 }
 

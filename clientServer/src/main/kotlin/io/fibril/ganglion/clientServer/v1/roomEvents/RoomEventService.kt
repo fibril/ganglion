@@ -167,27 +167,27 @@ class RoomEventServiceImpl @Inject constructor(
     override suspend fun getRoomMemberEvent(roomId: String, userId: String) =
         fetchEvents(
             mapOf(
-                "type" to RoomEventNames.StateEvents.MEMBER,
-                "room_id" to roomId,
-                "state_key" to userId
+                "type =" to RoomEventNames.StateEvents.MEMBER,
+                "room_id =" to roomId,
+                "state_key =" to userId
             )
         ).toCompletionStage().await()?.firstOrNull()
 
     override suspend fun getRoomPowerLevelEvent(roomId: String) =
         fetchEvents(
             mapOf(
-                "type" to RoomEventNames.StateEvents.POWER_LEVELS,
-                "room_id" to roomId,
-                "state_key" to RoomEventUtils.EVENT_ONE_OF_EACH_STATE_KEY
+                "type =" to RoomEventNames.StateEvents.POWER_LEVELS,
+                "room_id =" to roomId,
+                "state_key =" to RoomEventUtils.EVENT_ONE_OF_EACH_STATE_KEY
             )
         ).toCompletionStage().await()?.firstOrNull()
 
     override suspend fun getRoomJoinRuleEvent(roomId: String) =
         fetchEvents(
             mapOf(
-                "type" to RoomEventNames.StateEvents.JOIN_RULES,
-                "room_id" to roomId,
-                "state_key" to RoomEventUtils.EVENT_ONE_OF_EACH_STATE_KEY
+                "type =" to RoomEventNames.StateEvents.JOIN_RULES,
+                "room_id =" to roomId,
+                "state_key =" to RoomEventUtils.EVENT_ONE_OF_EACH_STATE_KEY
             )
         ).toCompletionStage().await()?.firstOrNull()
 

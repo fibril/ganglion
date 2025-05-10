@@ -3,7 +3,9 @@ package io.fibril.ganglion.clientServer.utils
 import java.util.*
 
 object ResourceBundleConstants {
-    val applicationBundle = ResourceBundle.getBundle("application")
+    private val ENVIRONMENT = System.getProperty("ganglion.environment")
+    val applicationBundle = ResourceBundle.getBundle("${ENVIRONMENT}.application")
+    val databaseBundle = ResourceBundle.getBundle("${ENVIRONMENT}.database")
     val domain = applicationBundle.getString("domain")
     val matrixFields = ResourceBundle.getBundle("matrixFields")
     val userQueries = ResourceBundle.getBundle("queries.userQueries")

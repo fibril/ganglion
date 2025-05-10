@@ -34,7 +34,13 @@ import io.vertx.ext.auth.User as VertxUser
 
 
 interface RoomService : Service<Room> {
-    suspend fun getJoinedRooms(vertxUser: VertxUser): Future<List<RoomEvent>>
+    suspend fun sync(syncDTO: SyncDTO): Future<JsonObject>
+
+    suspend fun getRoomMembershipEventsForUser(
+        vertxUser: VertxUser,
+        roomMembershipState: RoomMembershipState
+    ): Future<List<RoomEvent>>
+
     suspend fun inviteUser(inviteUserDTO: InviteUserDTO): Future<RoomEvent>
     suspend fun joinViaRoomIdOrAlias(joinRoomViaRoomIdOrAliasDTO: JoinRoomViaRoomIdOrAliasDTO): Future<RoomEvent>
     suspend fun joinViaRoomId(joinRoomViaRoomIdDTO: JoinRoomViaRoomIdDTO): Future<RoomEvent>
@@ -51,7 +57,6 @@ interface RoomService : Service<Room> {
     suspend fun canBan(roomId: String, roomMemberId: String, anotherMemberId: String): Future<Boolean>
     suspend fun canInvite(roomId: String, roomMemberId: String, anotherMemberId: String): Future<Boolean>
     suspend fun canKnockRoom(roomId: String, userId: String): Future<Boolean>
-
 }
 
 class RoomServiceImpl @Inject constructor(
@@ -159,23 +164,23 @@ class RoomServiceImpl @Inject constructor(
 
     }
 
-    override suspend fun getJoinedRooms(vertxUser: User): Future<List<RoomEvent>> {
-        val joinedRooms = try {
+    override suspend fun getRoomMembershipEventsForUser(
+        vertxUser: User,
+        roomMembershipState: RoomMembershipState
+    ): Future<List<RoomEvent>> {
+        val roomEvents = try {
             roomEventService.fetchEvents(
                 mapOf(
-                    "state_key" to vertxUser.principal().getString("sub"),
-                    "type" to RoomEventNames.StateEvents.MEMBER
+                    "state_key =" to vertxUser.principal().getString("sub"),
+                    "type =" to RoomEventNames.StateEvents.MEMBER,
+                    "content @>" to "'{${"membership"}: ${"${RoomMembershipState.JOIN.name.lowercase()}"}}'"
                 )
             ).toCompletionStage().await()
         } catch (e: PgException) {
             return Future.failedFuture(RequestException.fromPgException(e))
         }
 
-        return Future.succeededFuture((joinedRooms ?: listOf()).filter {
-            JsonObject(
-                it.asJson().getString("content")
-            ).getString("membership") == RoomMembershipState.JOIN.name.lowercase()
-        })
+        return Future.succeededFuture(roomEvents ?: listOf())
     }
 
     override suspend fun findOne(id: String): Future<Room?> {
@@ -234,6 +239,30 @@ class RoomServiceImpl @Inject constructor(
                 StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
             )
         )
+
+    }
+
+
+    override suspend fun sync(syncDTO: SyncDTO): Future<JsonObject> {
+        val vertxUser = syncDTO.sender ?: return Future.failedFuture(
+            RequestException(
+                403,
+                "Unauthorized",
+                StandardErrorResponse(ErrorCodes.M_BAD_JSON, "No user found").asJson()
+            )
+        )
+        val joinEvents = getRoomMembershipEventsForUser(vertxUser, RoomMembershipState.JOIN).toCompletionStage().await()
+
+        val inviteEvents =
+            getRoomMembershipEventsForUser(vertxUser, RoomMembershipState.INVITE).toCompletionStage().await()
+
+        val leaveEvents =
+            getRoomMembershipEventsForUser(vertxUser, RoomMembershipState.LEAVE).toCompletionStage().await()
+
+        val knockEvents =
+            getRoomMembershipEventsForUser(vertxUser, RoomMembershipState.KNOCK).toCompletionStage().await()
+        
+        return Future.succeededFuture(JsonObject())
 
     }
 
@@ -535,8 +564,8 @@ class RoomServiceImpl @Inject constructor(
                         .toSet()
                 val userMembershipEvents = (roomEventService.fetchEvents(
                     mapOf(
-                        "state_key" to userId,
-                        "type" to RoomEventNames.StateEvents.MEMBER
+                        "state_key =" to userId,
+                        "type =" to RoomEventNames.StateEvents.MEMBER
                     )
                 ).toCompletionStage().await() ?: listOf()).filter {
                     JsonObject(it.asJson().getString("content")).getString("membership") == "join"
@@ -599,8 +628,8 @@ class RoomServiceImpl @Inject constructor(
                         .toSet()
                 val userMembershipEvents = (roomEventService.fetchEvents(
                     mapOf(
-                        "state_key" to userId,
-                        "type" to RoomEventNames.StateEvents.MEMBER
+                        "state_key =" to userId,
+                        "type =" to RoomEventNames.StateEvents.MEMBER
                     )
                 ).toCompletionStage().await() ?: listOf()).filter {
                     JsonObject(it.asJson().getString("content")).getString("membership") == "join"

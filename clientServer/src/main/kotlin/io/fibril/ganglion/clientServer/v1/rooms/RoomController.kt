@@ -14,6 +14,7 @@ import io.fibril.ganglion.clientServer.utils.rateLimiters.RoomRequestRateLimiter
 import io.fibril.ganglion.clientServer.v1.authentication.RoleType
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventNames
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
+import io.fibril.ganglion.clientServer.v1.roomEvents.RoomMembershipState
 import io.fibril.ganglion.clientServer.v1.roomEvents.dtos.CreateRoomEventDTO
 import io.fibril.ganglion.clientServer.v1.rooms.dtos.*
 import io.vertx.core.Vertx
@@ -31,6 +32,13 @@ internal class RoomController @Inject constructor(
     override fun mountSubRoutes(): Router {
 
         router.route().handler(BodyHandler.create())
+
+        router.get(SYNC_PATH)
+            .useDTOValidation(SyncDTO::class.java)
+            .authenticatedRoute(minimumRoleType = RoleType.USER)
+            .handler(::sync)
+
+
         router.post(CREATE_ROOM_PATH)
             .addRequestRateLimiter(RoomRequestRateLimiter.getInstance())
             .useDTOValidation(CreateRoomDTO::class.java)
@@ -117,6 +125,10 @@ internal class RoomController @Inject constructor(
         return router
     }
 
+    private fun sync(routingContext: RoutingContext) {
+
+    }
+
     private fun createRoom(routingContext: RoutingContext) {
         CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
             val createRoomDTO =
@@ -139,7 +151,7 @@ internal class RoomController @Inject constructor(
 
     private fun getJoinedRooms(routingContext: RoutingContext) {
         CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
-            roomService.getJoinedRooms(routingContext.user())
+            roomService.getRoomMembershipEventsForUser(routingContext.user(), RoomMembershipState.JOIN)
                 .onSuccess { roomEvents ->
                     val result = JsonObject().put("joined_rooms", roomEvents.map { it.asJson().getString("room_id") })
                     routingContext.end(result.toString())
@@ -414,6 +426,7 @@ internal class RoomController @Inject constructor(
 
 
     companion object {
+        const val SYNC_PATH = "/v3/sync"
         const val CREATE_ROOM_PATH = "/v3/createRoom"
         const val GET_JOINED_ROOMS_PATH = "/v3/joined_rooms"
         const val INVITE_USER_PATH = "/v3/rooms/:roomId/invite"

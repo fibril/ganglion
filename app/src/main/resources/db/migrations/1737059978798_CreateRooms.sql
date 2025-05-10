@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS rooms (
     id VARCHAR(510) PRIMARY KEY NOT NULL CHECK (id ~ '^![a-zA-Z0-9_\-./]+:[a-zA-Z0-9\-._~]+$'),
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (now() at time zone 'utc'),
+    updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT (now() at time zone 'utc'),
     creator_id VARCHAR NOT NULL REFERENCES users (id),
     avatar_id VARCHAR REFERENCES media (id),
     canonical_alias VARCHAR,
@@ -29,3 +29,24 @@ CREATE TRIGGER update_rooms_updated_at
         rooms
     FOR EACH ROW
 EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER notify_rooms_resource_created
+    AFTER INSERT
+    ON
+        rooms
+    FOR EACH ROW
+EXECUTE PROCEDURE notify_resource_created();
+
+CREATE TRIGGER notify_rooms_resource_updated
+    AFTER UPDATE
+    ON
+        rooms
+    FOR EACH ROW
+EXECUTE PROCEDURE notify_resource_updated();
+
+CREATE TRIGGER notify_rooms_resource_deleted
+    AFTER DELETE
+    ON
+        rooms
+    FOR EACH ROW
+EXECUTE PROCEDURE notify_resource_deleted();

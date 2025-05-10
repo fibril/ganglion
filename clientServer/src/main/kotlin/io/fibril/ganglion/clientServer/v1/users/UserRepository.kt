@@ -5,6 +5,7 @@ import io.fibril.ganglion.clientServer.DTO
 import io.fibril.ganglion.clientServer.Repository
 import io.fibril.ganglion.clientServer.extensions.exclude
 import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
+import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants.applicationBundle
 import io.fibril.ganglion.clientServer.utils.Utils
 import io.fibril.ganglion.clientServer.v1.authentication.AuthServiceImpl
 import io.fibril.ganglion.clientServer.v1.users.models.MatrixUserId
@@ -16,7 +17,6 @@ import io.vertx.pgclient.PgException
 import io.vertx.sqlclient.DatabaseException
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.future.await
-import java.util.*
 
 
 interface UserRepository : Repository<User>
@@ -29,7 +29,7 @@ class UserRepositoryImpl @Inject constructor(private val database: PGDatabase) :
 
         val userId = MatrixUserId(
             params.getString("username"),
-            ResourceBundle.getBundle("application").getString("domain")
+            applicationBundle.getString("domain")
         ).toString()
 
         val result: Promise<JsonObject> = Promise.promise()
