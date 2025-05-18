@@ -22,7 +22,9 @@ interface RoomEventService : Service<RoomEvent> {
      * Fetch events satisfying arbitrary map of params
      */
     suspend fun fetchEvents(conditionsMap: Map<String, String>): Future<List<RoomEvent>?>
+    suspend fun fetchEventsByQuery(query: String): Future<List<RoomEvent>?>
     suspend fun getRoomMemberEvent(roomId: String, userId: String): RoomEvent?
+    suspend fun getAllRoomMemberEventForUser(userId: String): List<RoomEvent>
     suspend fun getRoomPowerLevelEvent(roomId: String): RoomEvent?
     suspend fun getRoomJoinRuleEvent(roomId: String): RoomEvent?
     suspend fun createRoomEventsBatch(createEventDTOs: List<CreateRoomEventDTO>): Future<List<RoomEvent>>
@@ -164,6 +166,22 @@ class RoomEventServiceImpl @Inject constructor(
         return Future.succeededFuture(events)
     }
 
+    override suspend fun fetchEventsByQuery(query: String): Future<List<RoomEvent>?> {
+        val events = try {
+            roomEventRepository.findAll(query)
+        } catch (e: PgException) {
+            return Future.failedFuture(
+                RequestException(
+                    500,
+                    e.message ?: "Unknown Exception",
+                    StandardErrorResponse(ErrorCodes.M_UNKNOWN).asJson()
+                )
+            )
+        }
+
+        return Future.succeededFuture(events)
+    }
+
     override suspend fun getRoomMemberEvent(roomId: String, userId: String) =
         fetchEvents(
             mapOf(
@@ -172,6 +190,14 @@ class RoomEventServiceImpl @Inject constructor(
                 "state_key =" to userId
             )
         ).toCompletionStage().await()?.firstOrNull()
+
+    override suspend fun getAllRoomMemberEventForUser(userId: String) =
+        fetchEvents(
+            mapOf(
+                "type =" to RoomEventNames.StateEvents.MEMBER,
+                "state_key =" to userId
+            )
+        ).toCompletionStage().await() ?: listOf()
 
     override suspend fun getRoomPowerLevelEvent(roomId: String) =
         fetchEvents(

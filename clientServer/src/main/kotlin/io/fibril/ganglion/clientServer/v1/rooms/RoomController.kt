@@ -126,7 +126,17 @@ internal class RoomController @Inject constructor(
     }
 
     private fun sync(routingContext: RoutingContext) {
-
+        CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
+            val syncDTO = SyncDTO(JsonObject.mapFrom(routingContext.queryParams()), routingContext.user())
+            roomService.sync(syncDTO)
+                .onSuccess { r ->
+                    routingContext.end(r.toString())
+                }.onFailure {
+                    val err = it as RequestException
+                    routingContext.response().setStatusCode(err.statusCode)
+                    routingContext.end(err.json.toString())
+                }
+        }
     }
 
     private fun createRoom(routingContext: RoutingContext) {

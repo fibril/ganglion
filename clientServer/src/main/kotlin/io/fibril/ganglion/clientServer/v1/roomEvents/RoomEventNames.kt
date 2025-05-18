@@ -46,4 +46,11 @@ object RoomEventNames {
         const val NEGOTIATE = "m.call.negotiate"
         const val SDP_STREAM_METADATA_CHANGED = "m.call.sdp_stream_metadata_changed"
     }
+
+    /**
+     * Contains all user defined private data events + custom events
+     */
+    object AccountDataEvents {
+        const val TAG = "m.tag"
+    }
 }

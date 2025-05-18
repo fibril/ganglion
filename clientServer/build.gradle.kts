@@ -14,6 +14,7 @@ dependencies {
     implementation(libs.resilience4j.kotlin)
     implementation(libs.guice)
     implementation(libs.bcrypt)
+    implementation(libs.opensearch.java)
     implementation(project(":auth"))
     implementation(project(":storage"))
     testImplementation(kotlin("test"))

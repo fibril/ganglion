@@ -11,6 +11,11 @@ import io.fibril.ganglion.clientServer.utils.Utils
 import io.fibril.ganglion.clientServer.utils.pagination.KeySetPagination
 import io.fibril.ganglion.clientServer.utils.pagination.PaginatedResult
 import io.fibril.ganglion.clientServer.utils.pagination.PaginationDTO
+import io.fibril.ganglion.clientServer.v1.filters.FilterService
+import io.fibril.ganglion.clientServer.v1.filters.models.EventFilter
+import io.fibril.ganglion.clientServer.v1.filters.models.RoomEventFilter
+import io.fibril.ganglion.clientServer.v1.filters.models.RoomFilter
+import io.fibril.ganglion.clientServer.v1.presence.PresenceServiceImpl
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventNames
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventService
 import io.fibril.ganglion.clientServer.v1.roomEvents.RoomEventUtils
@@ -22,14 +27,21 @@ import io.fibril.ganglion.clientServer.v1.rooms.dtos.*
 import io.fibril.ganglion.clientServer.v1.rooms.models.Room
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomAlias
 import io.fibril.ganglion.clientServer.v1.rooms.models.RoomId
+import io.fibril.ganglion.clientServer.v1.typing.TypingService
+import io.fibril.ganglion.storage.impl.GanglionOpenSearch
+import io.fibril.ganglion.storage.impl.GanglionRedisClient
 import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.auth.User
 import io.vertx.pgclient.PgException
+import io.vertx.redis.client.RedisAPI
 import io.vertx.sqlclient.DatabaseException
 import kotlinx.coroutines.future.await
+import org.opensearch.client.opensearch._types.FieldValue
+import org.opensearch.client.opensearch._types.query_dsl.Query
+import org.opensearch.client.opensearch.core.SearchRequest
 import io.vertx.ext.auth.User as VertxUser
 
 
@@ -37,7 +49,12 @@ interface RoomService : Service<Room> {
     suspend fun sync(syncDTO: SyncDTO): Future<JsonObject>
 
     suspend fun getRoomMembershipEventsForUser(
-        vertxUser: VertxUser,
+        userId: String,
+        roomMembershipState: RoomMembershipState
+    ): Future<List<RoomEvent>>
+
+    suspend fun getRoomMembershipEventsForUser(
+        user: VertxUser,
         roomMembershipState: RoomMembershipState
     ): Future<List<RoomEvent>>
 
@@ -63,6 +80,11 @@ class RoomServiceImpl @Inject constructor(
     private val roomRepository: RoomRepository,
     private val roomEventService: RoomEventService,
     private val roomAliasService: RoomAliasService,
+    private val filterService: FilterService,
+    private val typingService: TypingService,
+    private val ganglionOpenSearch: GanglionOpenSearch,
+    private val ganglionRedisClient: GanglionRedisClient,
+
     private val vertx: Vertx
 ) : RoomService {
 
@@ -165,15 +187,15 @@ class RoomServiceImpl @Inject constructor(
     }
 
     override suspend fun getRoomMembershipEventsForUser(
-        vertxUser: User,
+        userId: String,
         roomMembershipState: RoomMembershipState
     ): Future<List<RoomEvent>> {
         val roomEvents = try {
             roomEventService.fetchEvents(
                 mapOf(
-                    "state_key =" to vertxUser.principal().getString("sub"),
+                    "state_key =" to userId,
                     "type =" to RoomEventNames.StateEvents.MEMBER,
-                    "content @>" to "'{${"membership"}: ${"${RoomMembershipState.JOIN.name.lowercase()}"}}'"
+                    "content @>" to "{${'"'}${"membership"}${'"'}: ${'"'}${RoomMembershipState.JOIN.name.lowercase()}${'"'}}"
                 )
             ).toCompletionStage().await()
         } catch (e: PgException) {
@@ -181,6 +203,13 @@ class RoomServiceImpl @Inject constructor(
         }
 
         return Future.succeededFuture(roomEvents ?: listOf())
+    }
+
+    override suspend fun getRoomMembershipEventsForUser(
+        user: VertxUser,
+        roomMembershipState: RoomMembershipState
+    ): Future<List<RoomEvent>> {
+        return getRoomMembershipEventsForUser(user.principal().getString("sub"), roomMembershipState)
     }
 
     override suspend fun findOne(id: String): Future<Room?> {
@@ -251,18 +280,364 @@ class RoomServiceImpl @Inject constructor(
                 StandardErrorResponse(ErrorCodes.M_BAD_JSON, "No user found").asJson()
             )
         )
-        val joinEvents = getRoomMembershipEventsForUser(vertxUser, RoomMembershipState.JOIN).toCompletionStage().await()
 
-        val inviteEvents =
-            getRoomMembershipEventsForUser(vertxUser, RoomMembershipState.INVITE).toCompletionStage().await()
+        val currentUserId = vertxUser.principal().getString("sub")
 
-        val leaveEvents =
-            getRoomMembershipEventsForUser(vertxUser, RoomMembershipState.LEAVE).toCompletionStage().await()
+        val params = syncDTO.params()
+        val filterParam = params.getValue("filter", null)?.toString()
+        val filter: JsonObject =
+            if (filterParam == null) JsonObject()
+            else if (filterParam.startsWith('{')) JsonObject(filterParam)
+            else filterService.findOne(filterParam)
+                .toCompletionStage().await()?.asJson() ?: JsonObject()
 
-        val knockEvents =
-            getRoomMembershipEventsForUser(vertxUser, RoomMembershipState.KNOCK).toCompletionStage().await()
-        
-        return Future.succeededFuture(JsonObject())
+        val initialFilter = RoomEventFilter(filter)
+
+
+        val userJoinedRoomEvents =
+            getRoomMembershipEventsForUser(currentUserId, RoomMembershipState.JOIN).toCompletionStage().await()
+
+        /** All the roomIds that the user has joined */
+        val joinedRoomIds = userJoinedRoomEvents.mapNotNull { it.asJson().getString("room_id") }
+
+        /** Permitted types of events in Restricted rooms */
+        val strippedStateTypes = listOf(
+            RoomEventNames.StateEvents.CREATE,
+            RoomEventNames.StateEvents.NAME,
+            RoomEventNames.StateEvents.AVATAR,
+            RoomEventNames.StateEvents.TOPIC,
+            RoomEventNames.StateEvents.JOIN_RULES,
+            RoomEventNames.StateEvents.CANONICAL_ALIAS,
+            RoomEventNames.StateEvents.ENCRYPTION
+        )
+
+        val joinedRoomsQuery = """
+                SELECT * FROM room_events 
+                WHERE type = '${RoomEventNames.StateEvents.MEMBER}' 
+                AND content @> '{${'"'}${"membership"}${'"'}: ${'"'}${RoomMembershipState.JOIN.name.lowercase()}${'"'}}' 
+                AND room_id = ANY(ARRAY[${joinedRoomIds.map { "${"'"}$it${"'"}" }.joinToString(", ")}]);
+            """.trimIndent()
+
+        val joinedRoomStateEvents = roomEventService.fetchEventsByQuery(
+            joinedRoomsQuery
+        ).toCompletionStage().await()
+
+        println(joinedRoomsQuery)
+
+        println("joinedRoomStateEvents ${joinedRoomStateEvents?.map { it.asJson() }}")
+
+        val usersSenderSharesRoomWith =
+            joinedRoomStateEvents?.mapNotNull { it.asJson().getString("state_key") } ?: listOf()
+
+        val accountDataEventNames = listOf(RoomEventNames.AccountDataEvents.TAG)
+
+
+        val accountDataEventFilter = EventFilter(filter?.getJsonObject("account_data"))
+        val presenceEventFilter = EventFilter(filter?.getJsonObject("presence", JsonObject()))
+        val roomFilter = RoomFilter(filter?.getJsonObject("room", JsonObject()))
+
+        val accountDataQuery = accountDataEventFilter.toQuery(
+            additionalShouldQueries = listOf(
+//                Has no room_id (global account data)
+                Query.of { noRoomQuery ->
+                    noRoomQuery.bool { nb ->
+                        nb.mustNot { mn ->
+                            mn.exists { e -> e.field("map.room_id") }
+                        }.must { m ->
+                            m.term { t -> t.field("map.sender").value(FieldValue.of(currentUserId)) }
+                        }
+                    }
+                }
+            )
+        )
+
+
+        val inviteFilter = RoomEventFilter(filter)
+        val userInviteQuery = inviteFilter.toQuery(
+            lazyLoadMembersForUserId = if (initialFilter.lazyLoadMembers) currentUserId else null,
+            additionalShouldQueries = listOf(
+                Query.of { qq ->
+                    qq.term { t ->
+                        t.field("map.sender.keyword")
+                            .value(FieldValue.of(currentUserId))
+                    }
+                },
+                Query.of { qq ->
+                    qq.term { t ->
+                        t.field("map.content.membership.keyword")
+                            .value(FieldValue.of(RoomMembershipState.INVITE.name.lowercase()))
+                    }
+                },
+            )
+        )
+
+        val knockFilter = RoomEventFilter(filter)
+        val userKnockQuery = knockFilter.toQuery(
+            lazyLoadMembersForUserId = if (initialFilter.lazyLoadMembers) currentUserId else null,
+            additionalShouldQueries = listOf(
+                Query.of { qq ->
+                    qq.term { t ->
+                        t.field("map.sender.keyword")
+                            .value(FieldValue.of(currentUserId))
+                    }
+                },
+                Query.of { qq ->
+                    qq.term { t ->
+                        t.field("map.content.membership.keyword")
+                            .value(FieldValue.of(RoomMembershipState.KNOCK.name.lowercase()))
+                    }
+                },
+            )
+        )
+
+        val userLeaveQuery =
+            syncBuildRoomMembershipQuery(listOf(), currentUserId, RoomMembershipState.LEAVE)
+
+        val joinedRoomFilter = RoomEventFilter(filter.copy().apply {
+            put("rooms", JsonArray.of(*joinedRoomIds.toTypedArray()))
+        })
+
+        val joinedRoomsAccountDataQuery = joinedRoomFilter.toQuery(
+            lazyLoadMembersForUserId = if (initialFilter.lazyLoadMembers) currentUserId else null,
+            additionalMustQueries = listOf(
+                Query.of { noRoomQuery ->
+                    noRoomQuery.bool { nb ->
+                        nb.must { mn ->
+                            mn.exists { e -> e.field("map.room_id") }
+                        }.must { m ->
+                            m.term { t -> t.field("map.sender.keyword").value(FieldValue.of(currentUserId)) }
+                        }
+                    }
+                }
+            )
+        )
+
+        val joinedRoomsTimelineQuery = joinedRoomFilter.toQuery(
+            lazyLoadMembersForUserId = if (initialFilter.lazyLoadMembers) currentUserId else null,
+        )
+
+        val joinedRoomsStateQuery = joinedRoomFilter.toQuery(
+            lazyLoadMembersForUserId = if (initialFilter.lazyLoadMembers) currentUserId else null,
+            additionalMustQueries = listOf(
+                Query.of { q ->
+                    q.bool { nb ->
+                        nb.must { m ->
+                            m.terms { t ->
+                                t.field("map.content.membership.keyword")
+                                    .terms { v -> v.value(strippedStateTypes.map { FieldValue.of(it) }) }
+                            }
+                        }
+                    }
+                }
+            )
+        )
+
+
+        println("joinedRoomsTimelineQuery ${joinedRoomsTimelineQuery}")
+
+        println("usersSenderSharesRoomWith $usersSenderSharesRoomWith")
+
+        var presenceEvents = mutableListOf<JsonObject>()
+        if (usersSenderSharesRoomWith.isNotEmpty()) {
+            val redisClient = ganglionRedisClient.client()
+            val redisAPI = RedisAPI.api(redisClient)
+            val resp =
+                redisAPI.mget(usersSenderSharesRoomWith.map { PresenceServiceImpl.makeKey(it) }).toCompletionStage()
+                    .await()
+
+            if (resp.isArray) {
+                presenceEvents = resp.toList().mapNotNull { it }.map { JsonObject(it.toString()) }.toMutableList()
+            } else if (resp.isMap) {
+                presenceEvents.add(JsonObject(resp.toString()))
+            }
+        }
+
+
+        println(presenceEvents.map { it })
+
+        val joinTypingEvents = joinedRoomIds.mapNotNull {
+            try {
+                typingService.getTypingUsers(it).toCompletionStage().await()
+            } catch (pgE: Exception) {
+                null
+            }
+        }
+
+        println(joinTypingEvents.map { it.asJson() })
+
+        val openSearchClient = ganglionOpenSearch.client()
+
+        val accountDataRequest = SearchRequest.Builder()
+            .index("room_events")
+            .query(accountDataQuery)
+            .size(10)
+            .build()
+
+        val userInviteRequest = SearchRequest.Builder()
+            .index("room_events")
+            .query(userInviteQuery)
+            .size(10)
+            .build()
+
+        val userKnockRequest = SearchRequest.Builder()
+            .index("room_events")
+            .query(userKnockQuery)
+            .size(10)
+            .build()
+
+        val userLeaveRequest = SearchRequest.Builder()
+            .index("room_events")
+            .query(userLeaveQuery)
+            .size(10)
+            .build()
+
+
+        val accountDataEvents = openSearchClient.search(accountDataRequest, JsonObject::class.java)
+        val userInviteEvents = openSearchClient.search(userInviteRequest, JsonObject::class.java)
+        val userKnockEvents = openSearchClient.search(userKnockRequest, JsonObject::class.java)
+        val userLeaveEvents = openSearchClient.search(userLeaveRequest, JsonObject::class.java)
+
+        val joinedRoomAccountDataRequest = SearchRequest.Builder()
+            .index("room_events")
+            .query(joinedRoomsAccountDataQuery)
+            .size(10)
+            .build()
+
+        val joinedRoomStateRequest = SearchRequest.Builder()
+            .index("room_events")
+            .query(joinedRoomsStateQuery)
+            .size(10)
+            .build()
+
+        val joinedRoomTimelineRequest = SearchRequest.Builder()
+            .index("room_events")
+            .query(joinedRoomsTimelineQuery)
+            .size(10)
+            .build()
+
+        val joinedRoomAccountDataEventsResponse =
+            openSearchClient.search(joinedRoomTimelineRequest, JsonObject::class.java)
+
+        val joinedRoomStateEventsResponse = openSearchClient.search(joinedRoomTimelineRequest, JsonObject::class.java)
+
+        val joinedRoomTimeLineEventsResponse =
+            openSearchClient.search(joinedRoomTimelineRequest, JsonObject::class.java)
+
+//        val hits = joinedRoomTimeLineEvents.hits().hits()
+//        println(hits.size)
+//        for (hit in hits) {
+//            println(hit.source())
+//        }
+
+        val joinedRoomAccountMap = joinedRoomAccountDataEventsResponse.hits().hits()
+            .mapNotNull { it.source() }
+            .groupBy { it.getString("room_id") }
+
+        val joinedRoomEphemeralMap = joinedRoomTimeLineEventsResponse.hits().hits()
+            .mapNotNull { it.source() }
+            .groupBy { it.getString("room_id") }
+
+        val joinedRoomStateEventsMap = joinedRoomStateEventsResponse.hits().hits()
+            .mapNotNull { it.source() }
+            .groupBy { it.getString("room_id") }
+
+        val joinTimelineMap = joinedRoomTimeLineEventsResponse.hits().hits()
+            .mapNotNull { it.source() }
+            .groupBy { it.getString("room_id") }
+
+
+        val result = JsonObject()
+            .put(
+                "account_data",
+                JsonObject.of(
+                    "events",
+                    accountDataEvents.hits().hits().mapNotNull { it.source() })
+            )
+            .put("presence", JsonObject.of("events", presenceEvents))
+            .put(
+                "rooms",
+                JsonObject()
+                    .put(
+                        RoomMembershipState.INVITE.name.lowercase(),
+                        JsonObject(
+                            userInviteEvents.hits().hits()
+                                .mapNotNull { it.source() }
+                                .groupBy { it.getString("room_id") }
+                        )
+                    )
+                    .put(
+                        RoomMembershipState.KNOCK.name.lowercase(),
+                        JsonObject(
+                            userKnockEvents.hits().hits()
+                                .mapNotNull { it.source() }
+                                .groupBy { it.getString("room_id") }
+                        )
+                    )
+                    .put(
+                        RoomMembershipState.LEAVE.name.lowercase(),
+                        JsonObject(
+                            userLeaveEvents.hits().hits()
+                                .mapNotNull { it.source() }
+                                .groupBy { it.getString("room_id") }
+                        )
+                    )
+                    .put(
+                        RoomMembershipState.JOIN.name.lowercase(),
+                        JsonObject().apply {
+                            for (roomId in joinedRoomIds) {
+                                put(
+                                    roomId,
+                                    JsonObject()
+                                        .put(
+                                            "account_data", JsonObject.of(
+                                                "events",
+                                                accountDataEvents.hits().hits().mapNotNull { it.source() })
+                                        )
+                                        .put(
+                                            "ephemeral", JsonObject.of(
+                                                "events",
+                                                joinedRoomEphemeralMap.getOrDefault(roomId, JsonArray.of())
+                                            )
+                                        )
+                                        .put(
+                                            "state", JsonObject.of(
+                                                "events",
+                                                joinedRoomStateEventsMap.getOrDefault(roomId, JsonArray.of())
+                                            )
+                                        )
+                                        .put(
+                                            "summary", JsonObject.of(
+                                                "events",
+                                                JsonObject()
+                                            )
+                                        )
+                                        .put(
+                                            "timeline", JsonObject.of(
+                                                "events",
+                                                joinTimelineMap.getOrDefault(roomId, JsonArray.of())
+                                            )
+                                        )
+
+                                        .put(
+                                            "unread_notifications", JsonObject.of(
+                                                "events",
+                                                joinTimelineMap.getOrDefault(roomId, JsonArray.of())
+                                            )
+                                        )
+
+                                        .put(
+                                            "unread_thread_notifications", JsonObject.of(
+                                                "events",
+                                                joinTimelineMap.getOrDefault(roomId, JsonArray.of())
+                                            )
+                                        )
+                                )
+                            }
+                        }
+                    )
+            )
+
+        return Future.succeededFuture(result)
 
     }
 
@@ -959,6 +1334,52 @@ class RoomServiceImpl @Inject constructor(
         }
         return if (isRoomId) roomIdOrAlias else alias!!.asJson().getString("room_id")
 
+    }
+
+
+    private fun syncBuildRoomMembershipQuery(
+        types: List<String>,
+        currentUserId: String,
+        roomMembershipState: RoomMembershipState
+    ): Query {
+        return Query.of { q ->
+            q.bool { b ->
+                b.should(
+                    Query.of { mustQuery ->
+                        mustQuery.bool { bb ->
+                            bb.must(
+                                Query.of { typeQuery ->
+                                    typeQuery.match { t ->
+                                        t.field("map.state_key")
+                                            .query { v -> v.stringValue(currentUserId) }
+                                    }
+                                },
+                                Query.of { typeQuery ->
+                                    typeQuery.match { t ->
+                                        t.field("map.type")
+                                            .query { v -> v.stringValue(RoomEventNames.StateEvents.MEMBER) }
+                                    }
+                                },
+                                Query.of { typeQuery ->
+                                    typeQuery.match { t ->
+                                        t.field("map.content.membership")
+                                            .query { v -> v.stringValue(roomMembershipState.name.lowercase()) }
+                                    }
+                                }
+                            )
+                        }
+                    },
+                    *types.map { type ->
+                        Query.of { qq ->
+                            qq.match { m ->
+                                m.field("map.type")
+                                    .query(FieldValue.of(type))
+                            }
+                        }
+                    }.toTypedArray()
+                ).minimumShouldMatch("2")
+            }
+        }
     }
 
 }

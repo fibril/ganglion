@@ -45,6 +45,7 @@ import io.fibril.ganglion.clientServer.v1.users.models.User
 import io.fibril.ganglion.clientServer.v1.users.models.UserModel
 import io.fibril.ganglion.clientServer.v1.users.models.UserProfile
 import io.fibril.ganglion.clientServer.v1.users.models.UserProfileModel
+import io.fibril.ganglion.storage.impl.GanglionOpenSearch
 import io.fibril.ganglion.storage.impl.GanglionRedisClient
 import io.fibril.ganglion.storage.impl.PGDatabase
 import io.vertx.core.Vertx
@@ -124,4 +125,7 @@ class ClientModule(val vertx: Vertx) : AbstractModule() {
 
     @Provides
     fun provideGanglionJWTAuthProviderImpl() = GanglionJWTAuthProviderImpl(vertx)
+
+    @Provides
+    fun providesOpenSearch() = GanglionOpenSearch()
 }

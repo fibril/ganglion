@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.guice)
     implementation(libs.opensearch.java)
     implementation(libs.httpclient5)
+    implementation(libs.jackson.databind)
     testImplementation(kotlin("test"))
 }
 

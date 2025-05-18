@@ -89,12 +89,12 @@ class PresenceServiceImpl @Inject constructor(
         TODO("Not yet implemented")
     }
 
-    private fun makeKey(userId: String): String =
-        if (userId.substringAfterLast(':') == KEY_SUFFIX) userId else "$userId:$KEY_SUFFIX"
-
 
     companion object {
         const val IDENTIFIER = "v1.presence.PresenceService"
         const val KEY_SUFFIX = "presence"
+
+        fun makeKey(userId: String): String =
+            if (userId.substringAfterLast(':') == KEY_SUFFIX) userId else "$userId:$KEY_SUFFIX"
     }
 }

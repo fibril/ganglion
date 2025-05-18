@@ -2,6 +2,8 @@ package io.fibril.ganglion.clientServer.v1.users.models
 
 import com.google.inject.Inject
 import io.fibril.ganglion.clientServer.Model
+import io.fibril.ganglion.clientServer.utils.ResourceBundleConstants
+import io.fibril.ganglion.clientServer.v1.media.models.MediaUri
 import io.vertx.core.json.JsonObject
 
 interface UserProfileModel : Model {
@@ -21,6 +23,7 @@ data class UserProfile @Inject constructor(
             val displayName = getString("display_name") ?: userId.localPart
             put("display_name", displayName)
             put("displayname", displayName)
+            put("avatar_url", MediaUri(this.getString("avatar_id"), ResourceBundleConstants.domain).toString())
         }
 
 }

@@ -30,10 +30,10 @@ class OpenSearchWorkerVerticle : CoroutineVerticle() {
     val tables = arrayListOf("rooms", "room_events")
 
     override suspend fun start() {
-        openSearchClient = GanglionOpenSearch().client()
-
         val injector = Guice.createInjector(ClientModule(vertx))
+
         database = injector.getInstance(PGDatabase::class.java)
+        openSearchClient = injector.getInstance(GanglionOpenSearch::class.java).client()
 
         vertx.setTimer(40000L) {
             CoroutineHelpers.usingCoroutineScopeWithIODispatcher {
@@ -89,7 +89,7 @@ class OpenSearchWorkerVerticle : CoroutineVerticle() {
     private fun dbResourceNotificationHandler(payload: String, openSearchIndex: String, dbAction: DBAction) {
         println("payload $payload")
         if (dbAction == DBAction.DELETED) {
-
+            openSearchClient.delete { d -> d.index(openSearchIndex).id(payload) }
         } else {
             val json = JsonObject(payload)
             val indexRequest: IndexRequest<JsonObject> =

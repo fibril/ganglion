@@ -1,5 +1,8 @@
 package io.fibril.ganglion.storage.impl
 
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
+import io.vertx.core.json.jackson.VertxModule
 import org.apache.hc.client5.http.auth.AuthScope
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials
 import org.apache.hc.client5.http.impl.async.HttpAsyncClientBuilder
@@ -9,6 +12,7 @@ import org.apache.hc.client5.http.ssl.ClientTlsStrategyBuilder
 import org.apache.hc.core5.http.HttpHost
 import org.apache.hc.core5.reactor.ssl.TlsDetails
 import org.apache.hc.core5.ssl.SSLContextBuilder
+import org.opensearch.client.json.jackson.JacksonJsonpMapper
 import org.opensearch.client.opensearch.OpenSearchClient
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder
 import java.security.cert.X509Certificate
@@ -36,6 +40,10 @@ class GanglionOpenSearch {
 
     private val builder: ApacheHttpClient5TransportBuilder =
         ApacheHttpClient5TransportBuilder.builder(*hosts.toTypedArray())
+
+    private val mapper = ObjectMapper()
+        .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+        .registerModule(VertxModule());
 
     init {
 
@@ -69,7 +77,7 @@ class GanglionOpenSearch {
     }
 
     fun client(): OpenSearchClient {
-        val transport = builder.build()
+        val transport = builder.setMapper(JacksonJsonpMapper(mapper)).build()
         return OpenSearchClient(transport)
     }
 }
